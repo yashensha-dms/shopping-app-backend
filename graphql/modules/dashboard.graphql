@@ -1,0 +1,20 @@
+type Dashboard   {
+    total_revenue: Float
+    total_orders: Int
+    total_users: Int
+    total_products: Int
+    total_stores: Int
+    total_refunds: Int
+    total_withdraw_requests: Int
+}
+
+type DashboardChart {
+    revenues: [Float]
+    commissions: [Float]
+    months: [String]
+}
+
+extend type Query @guard {
+    dashboard: Dashboard @field(resolver: "App\\GraphQL\\Queries\\DashboardQuery@index")
+    dashboardChart: DashboardChart @field(resolver: "App\\GraphQL\\Queries\\DashboardQuery@chart")
+}
