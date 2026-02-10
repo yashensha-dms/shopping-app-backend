@@ -1,0 +1,70 @@
+# Mstore Laravel API - Git Ignore
+
+# Dependencies
+/node_modules
+/vendor
+
+# Environment & Secrets
+.env
+.env.backup
+.env.production
+*.key
+*.pem
+
+# IDE & Editor
+/.idea
+/.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Laravel Cache & Compiled
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitkeep
+
+# Storage (except gitkeep files)
+/storage/framework/cache/*
+!/storage/framework/cache/.gitkeep
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
+/storage/framework/views/*
+!/storage/framework/views/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep
+
+# Public Storage Symlink
+/public/storage
+/public/hot
+
+# Testing
+/phpunit.xml
+/.phpunit.result.cache
+/coverage
+
+# Build & Compiled Assets
+/public/build
+/public/css
+/public/js
+/public/mix-manifest.json
+npm-debug.log
+yarn-error.log
+
+# Deployment
+Homestead.json
+Homestead.yaml
+/.vagrant
+.phpunit.result.cache
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Composer Lock (optional - include if you want consistent dependencies)
+# composer.lock
