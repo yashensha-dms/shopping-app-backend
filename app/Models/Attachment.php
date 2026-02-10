@@ -63,7 +63,6 @@ class Attachment extends Media implements HasMedia
     {
         parent::boot();
         static::saving(function ($model) {
-            $model->model_id  = $model->id;
             $model->created_by_id = Helpers::getCurrentUserId() ?? Helpers::getAdmin()->id;
         });
     }

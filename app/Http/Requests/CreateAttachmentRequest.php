@@ -26,12 +26,10 @@ class CreateAttachmentRequest extends FormRequest
      */
     public function rules()
     {
-        if (!$this->attachments) {
-            throw new ExceptionHandler('Attachment is Null Value, Required Image Binary', 400);
-        }
-
         return [
-            'attachments.*'  => ['required','image','mimes:jpeg,jpg,png,gif,svg,webp'],
+            'file' => ['nullable','image','mimes:jpeg,jpg,png,gif,svg,webp','max:10240'],
+            'attachments' => ['nullable','array'],
+            'attachments.*'  => ['image','mimes:jpeg,jpg,png,gif,svg,webp','max:10240'],
         ];
     }
 

@@ -48,12 +48,25 @@ class AttachmentRepository extends BaseRepository
 
     public function store($request)
     {
-        $attachments = Helpers::createAttachment();
-        if ($request->hasFile('attachments')) {
-            $attachments = Helpers::storeImage($request->attachments, $attachments, 'attachment');
+        $user = auth()->user() ?? Helpers::getAdmin();
+        $createdAttachments = [];
+
+        $files = [];
+        if ($request->hasFile('file')) {
+            $files[] = $request->file('file');
         }
 
-        return $attachments;
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $files[] = $file;
+            }
+        }
+
+        foreach ($files as $file) {
+            $createdAttachments[] = $user->addMedia($file)->toMediaCollection('attachment');
+        }
+
+        return $createdAttachments;
     }
 
     public function destroy($id)

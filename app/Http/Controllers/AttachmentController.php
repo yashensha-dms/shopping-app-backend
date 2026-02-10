@@ -89,35 +89,43 @@ class AttachmentController extends Controller
      *      operationId="uploadAttachment",
      *      tags={"Attachments"},
      *      summary="Upload a new attachment",
-     *      description="Upload an image or file. Supported formats: jpg, jpeg, png, gif, webp, svg, pdf, doc, docx, xls, xlsx, csv, txt, zip. Maximum file size varies by server configuration.",
+     *      description="Upload an image or file. Supported formats: jpg, jpeg, png, gif, webp, svg. Accepts either a single file (file) or array of files (attachments).",
      *      security={{"sanctum":{}}},
      *      @OA\RequestBody(
      *          required=true,
      *          @OA\MediaType(
      *              mediaType="multipart/form-data",
      *              @OA\Schema(
-     *                  required={"file"},
-     *                  @OA\Property(property="file", type="string", format="binary", description="File to upload")
+     *                  @OA\Property(property="file", type="string", format="binary", description="Single file to upload"),
+     *                  @OA\Property(
+     *                      property="attachments[]",
+     *                      type="array",
+     *                      @OA\Items(type="string", format="binary"),
+     *                      description="Array of files to upload"
+     *                  )
      *              )
      *          )
      *      ),
      *      @OA\Response(
-     *          response=201,
+     *          response=200,
      *          description="File uploaded successfully",
      *          @OA\JsonContent(
-     *              @OA\Property(property="id", type="integer", example=123, description="Attachment ID to use in other requests"),
-     *              @OA\Property(property="name", type="string", example="uploaded-image.jpg"),
-     *              @OA\Property(property="file_name", type="string", example="1706789012_uploaded-image.jpg"),
-     *              @OA\Property(property="mime_type", type="string", example="image/jpeg"),
-     *              @OA\Property(property="size", type="integer", example=102400),
-     *              @OA\Property(property="original_url", type="string", format="uri"),
-     *              @OA\Property(property="created_at", type="string", format="date-time")
+     *              type="array",
+     *              @OA\Items(
+     *                  @OA\Property(property="id", type="integer", example=123),
+     *                  @OA\Property(property="name", type="string", example="uploaded-image.jpg"),
+     *                  @OA\Property(property="file_name", type="string", example="1706789012_uploaded-image.jpg"),
+     *                  @OA\Property(property="mime_type", type="string", example="image/jpeg"),
+     *                  @OA\Property(property="size", type="integer", example=102400),
+     *                  @OA\Property(property="original_url", type="string", format="uri"),
+     *                  @OA\Property(property="created_at", type="string", format="date-time")
+     *              )
      *          )
      *      ),
      *      @OA\Response(response=401, description="Unauthenticated"),
      *      @OA\Response(
      *          response=422,
-     *          description="Validation error - Invalid file type or size",
+     *          description="Validation error",
      *          @OA\JsonContent(
      *              @OA\Property(property="message", type="string", example="The file must be a file of type: jpg, jpeg, png, gif, webp.")
      *          )
