@@ -69,23 +69,36 @@ class Handler extends ExceptionHandler
      * @param string $header
      * @return string|null
      */
-    private function parseAcceptLanguage($header)
-    {
-        // Accept-Language format: "en_US,en;q=0.9,en_IN;q=0.8"
-        // Extract the first locale before comma or semicolon
-        $locales = explode(',', $header);
-        
-        if (empty($locales)) {
-            return null;
-        }
-
-        // Get the first locale and remove quality value if present
-        $primaryLocale = trim(explode(';', $locales[0])[0]);
-        
-        // Convert locale format: en_US -> en, en-US -> en
-        // Laravel typically uses two-letter locale codes
-        $locale = strtolower(substr($primaryLocale, 0, 2));
-        
-        return $locale ?: null;
+private function parseAcceptLanguage(?string $header): ?string
+{
+    if (! $header || $header === '*') {
+        return config('app.fallback_locale', 'en');
     }
+
+    // Extract the first locale before comma
+    $locales = explode(',', $header);
+
+    if (empty($locales)) {
+        return config('app.fallback_locale', 'en');
+    }
+
+    $primaryLocale = trim(explode(';', $locales[0])[0]);
+
+    // Reject wildcard or invalid values
+    if ($primaryLocale === '*' || strlen($primaryLocale) < 2) {
+        return config('app.fallback_locale', 'en');
+    }
+
+    $locale = strtolower(substr($primaryLocale, 0, 2));
+
+    // Allowlist
+    $allowed = ['en', 'fr', 'ar', 'hi'];
+
+    if (! in_array($locale, $allowed, true)) {
+        return config('app.fallback_locale', 'en');
+    }
+
+    return $locale;
+}
+
 }
