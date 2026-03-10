@@ -9,10 +9,19 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Spatie\Image\Manipulations;
 
 class Attachment extends Media implements HasMedia
 {
     use HasFactory,SoftDeletes, InteractsWithMedia;
+
+    public function registerMediaConversions(Media $media = null): void
+    {
+        $this->addMediaConversion('optimized')
+            ->fit(Manipulations::FIT_MAX, 1920, 1920)
+            ->quality(80)
+            ->nonQueued();
+    }
 
     protected $table = 'attachments';
 
