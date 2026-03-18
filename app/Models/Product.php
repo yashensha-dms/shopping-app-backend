@@ -70,6 +70,7 @@ class Product extends Model implements HasMedia
         'encourage_view',
         'external_url',
         'external_button_text',
+        'hsn_code',
         'created_by_id'
     ];
 

@@ -1,0 +1,20 @@
+- Custom SKU (Optional) Maximum 40 characters
+- Product Name (Mandatory) Maximum 200 characters
+- MRP (Mandatory) Number only
+- Selling Price (Optional) Number only Should be less than MRP
+- Business Category (Mandatory) Select from Dropdown
+- Product Category (Mandatory)
+- Product Description (Optional) Maximum 2000 characters
+- Variant Relationship (Optional)
+- Size (Optional)
+- Colour Code (Optional) Maximum 7 characters
+- Colour Name (Optional) Maximum 50 characters
+- Best Seller (Optional)
+- HSN Code (Optional)
+- Product Image1 (Optional)
+- Product Image2 (Optional)
+- Product Image3 (Optional)
+- Product Image4 (Optional)
+- Product Image5 (Optional)
+- Product Image6 (Optional)
+- Size Guide (Optional)

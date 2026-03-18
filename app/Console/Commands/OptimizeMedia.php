@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Attachment;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Spatie\Image\Image;
@@ -10,47 +9,35 @@ use Spatie\Image\Manipulations;
 
 class OptimizeMedia extends Command
 {
-    protected $signature = 'media:optimize {--dry-run : Only show what would be done} {--limit= : Limit the number of processed attachments}';
+    protected $signature = 'media:optimize {--dry-run : Only show what would be done}';
 
-    protected $description = 'Optimize existing image files in storage by resizing and compressing them, and update DB records';
+    protected $description = 'Optimize existing image files in storage by resizing and compressing them';
 
     public function handle()
     {
-        $this->info("Scanning Attachments for images...");
+        $storagePath = storage_path('app/public');
+        if (!File::exists($storagePath)) {
+            $this->error("Storage path not found: {$storagePath}");
+            return 1;
+        }
 
-        $query = Attachment::whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp']);
+        $this->info("Scanning storage for images...");
+        $files = File::allFiles($storagePath);
         
-        if ($this->option('limit')) {
-            $query->limit((int) $this->option('limit'));
-        }
+        $images = array_filter($files, function ($file) {
+            return in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'webp']);
+        });
 
-        $attachments = $query->get();
+        $this->info("Found " . count($images) . " images to process.");
 
-        if ($attachments->isEmpty()) {
-            $this->info("No image attachments found.");
-            return 0;
-        }
-
-        $this->info("Found " . $attachments->count() . " images to process.");
-
-        $bar = $this->output->createProgressBar($attachments->count());
+        $bar = $this->output->createProgressBar(count($images));
         $bar->start();
 
-        $totalOldSize = 0;
-        $totalNewSize = 0;
-        $processedCount = 0;
+        $totalSaved = 0;
 
-        foreach ($attachments as $attachment) {
-            $path = $attachment->getPath();
-
-            if (!File::exists($path)) {
-                $this->warn("\nFile not found for Attachment ID {$attachment->id}: {$path}");
-                $bar->advance();
-                continue;
-            }
-
+        foreach ($images as $file) {
+            $path = $file->getRealPath();
             $oldSize = filesize($path);
-            $totalOldSize += $oldSize;
 
             if (!$this->option('dry-run')) {
                 try {
@@ -61,20 +48,10 @@ class OptimizeMedia extends Command
 
                     clearstatcache();
                     $newSize = filesize($path);
-                    $totalNewSize += $newSize;
-
-                    // Update attachment record
-                    $attachment->size = $newSize;
-                    $attachment->save();
-                    
-                    $processedCount++;
+                    $totalSaved += ($oldSize - $newSize);
                 } catch (\Exception $e) {
-                    $this->error("\nFailed to process Attachment ID {$attachment->id} at {$path}: " . $e->getMessage());
-                    $totalNewSize += $oldSize; // Assume no change if failed
+                    $this->error("\nFailed to process {$path}: " . $e->getMessage());
                 }
-            } else {
-                $processedCount++;
-                $totalNewSize += $oldSize; // For dry run, assume no change
             }
 
             $bar->advance();
@@ -82,17 +59,10 @@ class OptimizeMedia extends Command
 
         $bar->finish();
         
-        $savedBytes = $totalOldSize - $totalNewSize;
-        $savedMB = round($savedBytes / 1024 / 1024, 2);
-        
+        $savedMB = round($totalSaved / 1024 / 1024, 2);
         $this->info("\nOptimization complete!");
-        $this->info("Processed: {$processedCount} images.");
         if (!$this->option('dry-run')) {
             $this->info("Total space saved: {$savedMB} MB");
-        } else {
-            $this->info("Dry run complete. No files were modified.");
         }
-
-        return 0;
     }
 }
