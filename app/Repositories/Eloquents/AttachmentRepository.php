@@ -8,6 +8,7 @@ use App\Models\Attachment;
 use App\GraphQL\Exceptions\ExceptionHandler;
 use Prettus\Repository\Eloquent\BaseRepository;
 use Prettus\Repository\Criteria\RequestCriteria;
+use Illuminate\Support\Facades\Auth;
 
 class AttachmentRepository extends BaseRepository
 {
@@ -48,7 +49,7 @@ class AttachmentRepository extends BaseRepository
 
     public function store($request)
     {
-        $user = auth()->user() ?? Helpers::getAdmin();
+        $user = Auth::guard('api')->user() ?? Helpers::getAdmin();
         $createdAttachments = [];
 
         $files = [];
