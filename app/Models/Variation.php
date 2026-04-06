@@ -30,7 +30,8 @@ class Variation extends Model implements HasMedia
         'product_id',
         'stock_status',
         'attribute_value_id',
-        'variation_image_id'
+        'variation_image_id',
+        'barcode'
     ];
 
     protected $casts = [

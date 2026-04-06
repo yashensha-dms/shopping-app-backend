@@ -71,6 +71,7 @@ class Product extends Model implements HasMedia
         'external_url',
         'external_button_text',
         'hsn_code',
+        'barcode',
         'created_by_id'
     ];
 

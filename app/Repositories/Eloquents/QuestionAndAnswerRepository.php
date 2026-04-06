@@ -13,7 +13,7 @@ use Prettus\Repository\Criteria\RequestCriteria;
 class QuestionAndAnswerRepository extends BaseRepository
 {
     protected $fieldSearchable = [
-        'quenstion' => 'like',
+        'question' => 'like',
         'answer' => 'like',
     ];
 
@@ -51,7 +51,7 @@ class QuestionAndAnswerRepository extends BaseRepository
         DB::beginTransaction();
         try {
 
-            $quentionAndAnswer = $this->model->create([
+            $questionAndAnswer = $this->model->create([
                 'question' => $request->question,
                 'answer' => $request->answer,
                 'consumer_id' => Helpers::getCurrentUserId(),
@@ -60,7 +60,7 @@ class QuestionAndAnswerRepository extends BaseRepository
             ]);
 
             DB::commit();
-            return $quentionAndAnswer;
+            return $questionAndAnswer;
 
         } catch (Exception $e) {
 
@@ -74,11 +74,11 @@ class QuestionAndAnswerRepository extends BaseRepository
         DB::beginTransaction();
         try {
 
-            $quentionAndAnswer = $this->model->findOrFail($id);
-            $quentionAndAnswer->update($request);
+            $questionAndAnswer = $this->model->findOrFail($id);
+            $questionAndAnswer->update($request);
 
             DB::commit();
-            return $quentionAndAnswer;
+            return $questionAndAnswer;
 
         } catch (Exception $e){
 
