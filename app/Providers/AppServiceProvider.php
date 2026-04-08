@@ -16,6 +16,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind('App',function(){
             return new AppMethods();
         });
+
+        $this->app->bind(
+            \App\Services\Sms\SmsProviderInterface::class,
+            \App\Services\Sms\LogSmsProvider::class
+        );
     }
 
     /**

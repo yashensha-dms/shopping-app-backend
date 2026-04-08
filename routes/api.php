@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +43,10 @@ Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
     ->middleware('throttle:forgot-password');
 Route::post('/verify-token', 'App\Http\Controllers\AuthController@verifyToken');
 Route::post('/update-password', 'App\Http\Controllers\AuthController@updatePassword');
+
+// OTP Authentication
+Route::post('send-otp', [AuthController::class, 'sendOtp']);
+Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 
 Route::get('/login', function () {
     return response()->json(['message' => 'Unauthenticated.'], 401);

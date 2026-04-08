@@ -23,6 +23,12 @@ use App\GraphQL\Exceptions\ExceptionHandler;
 class AuthController extends Controller
 {
     use WalletPointsTrait;
+    protected $smsService;
+
+    public function __construct(\App\Services\Sms\SmsService $smsService)
+    {
+        $this->smsService = $smsService;
+    }
 
     /**
      * @OA\Post(
@@ -116,7 +122,8 @@ class AuthController extends Controller
     public function verifyLogin(Request $request)
     {
         $validator = Validator::make($request->all(),[
-            'email'    => 'required|email',
+            'email'    => 'required_without:phone',
+            'phone'    => 'required_without:email',
             'password' => 'required',
         ]);
 
@@ -124,12 +131,17 @@ class AuthController extends Controller
             throw new \Illuminate\Validation\ValidationException($validator);
         }
 
-        $user = User::where('email',$request->email)->first();
+        $user = User::where(function($query) use ($request) {
+            if ($request->email) {
+                $query->where('email', $request->email);
+            }
+            if ($request->phone) {
+                $query->orWhere('phone', $request->phone);
+            }
+        })->first();
+
         if (!$user) {
-            // Throwing a generic error to prevent email enumeration, or specific if desired.
-            // Using standard exception for now but catchable upstream if needed.
-            // However, previous code threw 400.
-             abort(400, "There is no account linked to the given email.");
+             abort(400, "There is no account linked to the given credentials.");
         }
 
         if (!$user->status) {
@@ -177,9 +189,9 @@ class AuthController extends Controller
 
             $validator = Validator::make($request->all(),[
                 'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
-                'password' => 'required|string|min:8|confirmed',
-                'password_confirmation' => 'required',
+                'email' => 'nullable|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
+                'password' => 'required_with:email|string|min:8|confirmed',
+                'password_confirmation' => 'required_with:password',
                 'country_code' => 'required',
                 'phone' => 'required|min:9|unique:users,phone,NULL,id,deleted_at,NULL',
             ]);
@@ -363,5 +375,103 @@ class AuthController extends Controller
             'message' => "You are all logged out! We hope to see you soon again.",
             'success' => true
         ];
+    }
+
+    public function sendOtp(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'phone' => 'required',
+                'country_code' => 'nullable',
+                'name' => 'nullable|string|max:255', // Optional for quick signup
+            ]);
+
+            if ($validator->fails()) {
+                throw new Exception($validator->messages()->first(), 422);
+            }
+
+            $user = User::where('phone', $request->phone)->first();
+
+            if (!$user) {
+                // For a mobile app, if user doesn't exist, we can register them on the fly if name is provided.
+                // Or we can just create a temporary entry.
+                // Given the requirement: "after registration the user should be authenticate using mobile and otp"
+                if (!$request->name) {
+                    throw new Exception("Account not found. Please provide a name to register.", 404);
+                }
+
+                $user = User::create([
+                    'name' => $request->name,
+                    'phone' => $request->phone,
+                    'country_code' => $request->country_code ?? '+91',
+                    'status' => 1,
+                ]);
+
+                $user->assignRole(RoleEnum::CONSUMER);
+
+                if (Helpers::pointIsEnable()) {
+                    $settings = Helpers::getSettings();
+                    $signUpPoints = $settings['wallet_points']['signup_points'];
+                    $this->creditPoints($user->id, $signUpPoints, WalletPointsDetail::SIGN_UP_BONUS);
+                    event(new SignUpBonusPointsEvent($user));
+                }
+
+                if (Helpers::walletIsEnable()) {
+                    $user->wallet()->create();
+                }
+            }
+
+            $this->smsService->sendOtp($user);
+
+            return [
+                'message' => 'OTP has been sent successfully to your mobile number.',
+                'success' => true
+            ];
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'phone' => 'required',
+                'otp' => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                throw new Exception($validator->messages()->first(), 422);
+            }
+
+            $user = User::where('phone', $request->phone)
+                        ->where('otp', $request->otp)
+                        ->where('otp_expires_at', '>', Carbon::now())
+                        ->first();
+
+            if (!$user) {
+                throw new Exception("Invalid or expired OTP code.", 400);
+            }
+
+            // Clear OTP after successful verification
+            $user->otp = null;
+            $user->otp_expires_at = null;
+            $user->save();
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+            $user->tokens()->orderBy('id', 'desc')->first()->update([
+                'role_type' => $user->getRoleNames()->first()
+            ]);
+
+            return [
+                'access_token' => $token,
+                'permissions'  => $user->getAllPermissions(),
+                'success' => true
+            ];
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
     }
 }
