@@ -1,0 +1,179 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\Page;
+use App\Models\User;
+use App\Models\Category;
+use App\Models\Attachment;
+use App\Models\ThemeOption;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+
+class ClearStorage extends Command
+{
+    protected $signature = 'app:clear-storage
+                            {--force   : Skip confirmation prompt}
+                            {--dry-run : Show what would be deleted without doing anything}';
+
+    protected $description = 'Delete orphaned product/demo media from storage, preserving core system images (theme, categories, admin profile)';
+
+    /**
+     * Storage disk root where Spatie puts files: storage/app/public/{attachmentId}/file
+     */
+    private string $storagePath;
+
+    public function handle(): int
+    {
+        $this->storagePath = storage_path('app/public');
+
+        if (! is_dir($this->storagePath)) {
+            $this->error("Storage directory not found: {$this->storagePath}");
+            return self::FAILURE;
+        }
+
+        // ── 1. Build the safe list ────────────────────────────────────────────
+        $this->info('Building safe list of protected attachments...');
+        $safeIds = $this->buildSafeList();
+        $this->line("  → <comment>{$safeIds->count()}</comment> protected attachment ID(s) found.");
+
+        // ── 2. Find all orphaned attachment records (DB) ─────────────────────
+        // "Attachment pool" media unlinked from core concepts
+        $orphanQuery   = Attachment::whereNotIn('id', $safeIds->toArray());
+        $orphanCount   = $orphanQuery->count();
+
+        // ── 3. Find completely orphaned physical folders ─────────────────────
+        // i.e., folders in storage that don't even have an attachment record
+        $allAttachmentDbIds = Attachment::pluck('id')->toArray();
+        $physicalFolders = collect(File::directories($this->storagePath))
+            ->map(fn($d) => ['path' => $d, 'id' => (int) basename($d)])
+            ->filter(fn($d) => is_numeric(basename($d['path'])));
+
+        // A physical folder is orphaned if its ID is NOT in the safe list AND 
+        // we'll be deleting it if it's in the orphan query. So physical orphans
+        // are folders that aren't in the safe list.
+        $orphanPhysical = $physicalFolders->filter(fn($d) => ! $safeIds->contains($d['id']));
+        $physicalCount = $orphanPhysical->count();
+
+        if ($orphanCount === 0 && $physicalCount === 0) {
+            $this->info('✔ Storage is already clean. Nothing to do.');
+            return self::SUCCESS;
+        }
+
+        // ── 4. Summary ───────────────────────────────────────────────────────
+        $this->table(
+            ['Check', 'Count'],
+            [
+                ['Protected (safe) attachment IDs',  $safeIds->count()],
+                ['Orphaned attachment DB pool records', $orphanCount],
+                ['Orphaned physical storage folders', $physicalCount],
+            ]
+        );
+
+        if ($this->option('dry-run')) {
+            $this->warn('[DRY RUN] No files or records were deleted.');
+            return self::SUCCESS;
+        }
+
+        // ── 5. Delete orphaned attachment records via Eloquent ────────────────
+        if ($orphanCount > 0) {
+            $this->info("Deleting {$orphanCount} orphaned DB attachments (+ their files if present)...");
+            
+            // Re-fetch since cursor/each can be tricky
+            $ids = $orphanQuery->pluck('id');
+            foreach ($ids->chunk(100) as $chunk) {
+                Attachment::whereIn('id', $chunk)->get()->each(function ($a) {
+                    $a->delete();
+                });
+            }
+            $this->newLine();
+        }
+
+        // ── 6. Physical sweep — catch phantom folders ───────────────────────
+        // Only keep folders that belong to an Attachment STILL in the database
+        $remainingDbIds = Attachment::pluck('id')->toArray();
+        $leftoverFolders = collect(File::directories($this->storagePath))
+            ->map(fn($d) => ['path' => $d, 'id' => (int) basename($d)])
+            ->filter(fn($d) => is_numeric(basename($d['path'])))
+            ->filter(fn($d) => ! in_array($d['id'], $remainingDbIds));
+
+        if ($leftoverFolders->count() > 0) {
+            $this->info("Physical sweep: force removing {$leftoverFolders->count()} phantom folder(s)...");
+            $bar = $this->output->createProgressBar($leftoverFolders->count());
+            $bar->start();
+
+            foreach ($leftoverFolders as $dir) {
+                File::deleteDirectory($dir['path']);
+                $bar->advance();
+            }
+
+            $bar->finish();
+            $this->newLine();
+        }
+
+        $this->info('✔ Storage cleanup complete!');
+
+        // ── 7. Final count ───────────────────────────────────────────────────
+        $remainingFiles = 0;
+        if (is_dir($this->storagePath)) {
+            $rii = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->storagePath));
+            foreach ($rii as $file) {
+                if ($file->isFile()) $remainingFiles++;
+            }
+        }
+        $this->line("  Remaining files in storage: <comment>{$remainingFiles}</comment>");
+
+        return self::SUCCESS;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Safe list builder
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Collect all attachment IDs that must NOT be deleted.
+     *
+     * Safe sources:
+     *   - All user profile images (especially admin)
+     *   - Category images and icons
+     *   - Page meta images
+     *   - All numeric _id values found inside ThemeOption JSON
+     *     (covers store logo, favicon, hero images, etc.)
+     */
+    private function buildSafeList(): \Illuminate\Support\Collection
+    {
+        $safeIds = collect();
+
+        // User profile images (admin + any remaining)
+        $safeIds = $safeIds->merge(
+            User::withTrashed()->whereNotNull('profile_image_id')->pluck('profile_image_id')
+        );
+
+        // Category images and icons
+        $safeIds = $safeIds->merge(
+            Category::withTrashed()->whereNotNull('category_image_id')->pluck('category_image_id')
+        );
+        $safeIds = $safeIds->merge(
+            Category::withTrashed()->whereNotNull('category_icon_id')->pluck('category_icon_id')
+        );
+
+        // Page meta images
+        if (class_exists(Page::class)) {
+            $safeIds = $safeIds->merge(
+                Page::withTrashed()->whereNotNull('page_meta_image_id')->pluck('page_meta_image_id')
+            );
+        }
+
+        // ThemeOption JSON — extract every value that looks like an attachment ID
+        // e.g. "logo_id": 12, "favicon_id": 7, "header_image_id": 45 ...
+        ThemeOption::all()->each(function ($option) use (&$safeIds) {
+            $raw = json_encode($option->getRawOriginal('options'));
+            if (preg_match_all('/_id["\s]*:\s*([0-9]+)/', $raw, $matches)) {
+                $safeIds = $safeIds->merge(array_map('intval', $matches[1]));
+            }
+        });
+
+        return $safeIds->unique()->filter()->values();
+    }
+}
