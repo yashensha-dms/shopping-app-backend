@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Blog;
+use App\Models\User;
 use App\Models\Attachment;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -41,27 +42,40 @@ class ClearDemoData extends Command
         $blogCatCount     = DB::table('blog_categories')->count();
         $couponCount      = DB::table('coupons')->count();
 
+        // Collect non-admin users (all, including soft-deleted)
+        $dummyUsers = User::withTrashed()
+            ->whereDoesntHave('roles', fn($q) => $q->where('name', 'admin'))
+            ->get();
+        $userCount = $dummyUsers->count();
+
         // Collect blog attachment IDs for media cleanup
         $blogAttachmentIds = collect();
         Blog::withTrashed()->each(function ($blog) use (&$blogAttachmentIds) {
             if ($blog->blog_thumbnail_id)   $blogAttachmentIds->push($blog->blog_thumbnail_id);
             if ($blog->blog_meta_image_id)  $blogAttachmentIds->push($blog->blog_meta_image_id);
         });
-        $blogAttachmentIds = $blogAttachmentIds->unique()->filter();
-        $attachmentCount   = $blogAttachmentIds->count();
+        // Collect user profile image IDs
+        $userAttachmentIds = $dummyUsers
+            ->pluck('profile_image_id')
+            ->filter()
+            ->unique();
+
+        $allAttachmentIds = $blogAttachmentIds->merge($userAttachmentIds)->unique()->filter();
+        $attachmentCount  = $allAttachmentIds->count();
 
         // ── 2. Show summary ──────────────────────────────────────────────────
         $this->table(
             ['Table', 'Records'],
             [
-                ['stores',              $storeCount],
-                ['vendor_wallets',      $vendorWallets],
-                ['vendor_transactions', $vendorTx],
-                ['blogs',               $blogCount],
-                ['blog_tags (pivot)',   $blogTagCount],
-                ['blog_categories (pivot)', $blogCatCount],
-                ['blog attachments',    $attachmentCount],
-                ['coupons',             $couponCount],
+                ['stores',                   $storeCount],
+                ['vendor_wallets',            $vendorWallets],
+                ['vendor_transactions',       $vendorTx],
+                ['blogs',                    $blogCount],
+                ['blog_tags (pivot)',         $blogTagCount],
+                ['blog_categories (pivot)',   $blogCatCount],
+                ['coupons',                  $couponCount],
+                ['dummy users (non-admin)',   $userCount],
+                ['attachments to delete',     $attachmentCount],
             ]
         );
 
@@ -70,15 +84,15 @@ class ClearDemoData extends Command
             return self::SUCCESS;
         }
 
-        // ── 3. Delete blog attachment files ──────────────────────────────────
+        // ── 3. Delete attachment files (blogs + user avatars) ────────────────
         if ($attachmentCount > 0) {
-            $this->info("Deleting {$attachmentCount} blog attachments from storage...");
+            $this->info("Deleting {$attachmentCount} media files from storage...");
             $bar = $this->output->createProgressBar($attachmentCount);
             $bar->start();
 
-            foreach ($blogAttachmentIds->chunk(100) as $chunk) {
+            foreach ($allAttachmentIds->chunk(100) as $chunk) {
                 Attachment::whereIn('id', $chunk)->get()->each(function ($attachment) use ($bar) {
-                    $attachment->delete(); // triggers Spatie file removal
+                    $attachment->delete();
                     $bar->advance();
                 });
             }
@@ -87,8 +101,27 @@ class ClearDemoData extends Command
             $this->newLine();
         }
 
+        // ── 3b. Hard-delete dummy users & related data ────────────────────────
+        if ($userCount > 0) {
+            $this->info("Removing {$userCount} dummy users...");
+            $userIds = $dummyUsers->pluck('id')->toArray();
+
+            Schema::disableForeignKeyConstraints();
+            DB::table('personal_access_tokens')->whereIn('tokenable_id', $userIds)
+                ->where('tokenable_type', 'App\\Models\\User')->delete();
+            DB::table('model_has_roles')->whereIn('model_id', $userIds)
+                ->where('model_type', 'App\\Models\\User')->delete();
+            DB::table('addresses')->whereIn('user_id', $userIds)->delete();
+            DB::table('points')->whereIn('consumer_id', $userIds)->delete();
+            DB::table('wallets')->whereIn('consumer_id', $userIds)->delete();
+            // Force hard-delete (even soft-deleted records)
+            DB::table('users')->whereIn('id', $userIds)->delete();
+            Schema::enableForeignKeyConstraints();
+        }
+
         // ── 4. Truncate tables (disable FK constraints first) ────────────────
-        $this->info('Clearing demo database records...');
+        // ── 4. Truncate remaining tables ──────────────────────────────────────
+        $this->info('Clearing remaining demo database records...');
 
         Schema::disableForeignKeyConstraints();
 
