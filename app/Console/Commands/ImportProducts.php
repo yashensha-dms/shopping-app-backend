@@ -130,18 +130,16 @@ class ImportProducts extends Command
     /**
      * Derive a human-readable, title-cased category name from the SQL filename.
      *
-     * File example:  BABY_CARE_import.sql
-     * Result:        Baby Care
-     *
-     * File example:  GROCERY_&_COOKING_ESSENTIALS_import.sql
-     * Result:        Grocery & Cooking Essentials
+     * File example:  BABY CARE_import.sql            → Baby Care
+     * File example:  BABY_CARE_import.sql            → Baby Care
+     * File example:  GROCERY & COOKING_import.sql    → Grocery & Cooking
      */
     protected function categoryNameFromFile(string $filePath): string
     {
-        $basename = pathinfo($filePath, PATHINFO_FILENAME);          // e.g. BABY_CARE_import
-        $basename = preg_replace('/_import$/i', '', $basename);      // strip _import suffix
-        $basename = str_replace('_', ' ', $basename);                // underscores → spaces
-        return Str::title($basename);                                // title case
+        $basename = pathinfo($filePath, PATHINFO_FILENAME);     // e.g. "BABY CARE_import"
+        $basename = preg_replace('/_import$/i', '', $basename); // strip _import suffix
+        $basename = str_replace('_', ' ', $basename);           // underscores → spaces
+        return Str::title(strtolower($basename));               // proper Title Case
     }
 
     /**
