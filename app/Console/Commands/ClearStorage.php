@@ -15,6 +15,7 @@ class ClearStorage extends Command
 {
     protected $signature = 'app:clear-storage
                             {--force   : Skip confirmation prompt}
+                            {--total   : Delete ALL attachments and storage files (Factory Reset)}
                             {--dry-run : Show what would be deleted without doing anything}';
 
     protected $description = 'Delete orphaned product/demo media from storage, preserving core system images (theme, categories, admin profile)';
@@ -31,6 +32,10 @@ class ClearStorage extends Command
         if (! is_dir($this->storagePath)) {
             $this->error("Storage directory not found: {$this->storagePath}");
             return self::FAILURE;
+        }
+
+        if ($this->option('total')) {
+            return $this->handleTotalWipe();
         }
 
         // ── 1. Build the safe list ────────────────────────────────────────────
@@ -127,9 +132,56 @@ class ClearStorage extends Command
         return self::SUCCESS;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Safe list builder
-    // ─────────────────────────────────────────────────────────────────────────
+    private function handleTotalWipe(): int
+    {
+        $this->warn('!!! TOTAL WIPE INITIATED !!!');
+        $this->warn('This will delete EVERY attachment and file in public storage.');
+
+        if (! $this->option('force') && ! $this->confirm('Are you absolutely sure you want to delete everything?', false)) {
+            $this->info('Operation cancelled.');
+            return self::SUCCESS;
+        }
+
+        if ($this->option('dry-run')) {
+            $this->info('[DRY RUN] Would truncate `attachments` table.');
+            $this->info("[DRY RUN] Would delete all contents of: {$this->storagePath}");
+            return self::SUCCESS;
+        }
+
+        // 1. Truncate DB
+        $this->info('Truncating `attachments` table...');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Attachment::truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+        // 2. Clear Storage
+        $this->info('Clearing physical storage...');
+        $files = File::allFiles($this->storagePath, true);
+        $directories = File::directories($this->storagePath);
+
+        $bar = $this->output->createProgressBar(count($files) + count($directories));
+        $bar->start();
+
+        // Delete files
+        foreach ($files as $file) {
+            if ($file->getFilename() !== '.gitignore') {
+                File::delete($file->getPathname());
+            }
+            $bar->advance();
+        }
+
+        // Delete directories
+        foreach ($directories as $directory) {
+            File::deleteDirectory($directory);
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+
+        $this->info('✔ Factory reset complete. Storage is empty.');
+        return self::SUCCESS;
+    }
 
     /**
      * Collect all attachment IDs that must NOT be deleted.
