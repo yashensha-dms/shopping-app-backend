@@ -102,4 +102,15 @@ class ProductPolicy
     {
         //
     }
+
+    /**
+     * Determine whether the user can view the cost of the product.
+     *
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\Auth\Access\Response|bool
+     */
+    public function viewCost(User $user)
+    {
+        return $user->role->name == RoleEnum::ADMIN;
+    }
 }

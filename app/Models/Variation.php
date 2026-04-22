@@ -31,7 +31,8 @@ class Variation extends Model implements HasMedia
         'stock_status',
         'attribute_value_id',
         'variation_image_id',
-        'barcode'
+        'barcode',
+        'cost'
     ];
 
     protected $casts = [
@@ -43,6 +44,7 @@ class Variation extends Model implements HasMedia
         'status' => 'integer',
         'attribute_value_id' => 'integer',
         'variation_image_id' => 'integer',
+        'cost' => 'float',
     ];
 
     protected $with = [
@@ -96,5 +98,13 @@ class Variation extends Model implements HasMedia
     public function attribute_values(): BelongsToMany
     {
         return $this->belongsToMany(AttributeValue::class, 'variation_attribute_values');
+    }
+
+    /**
+     * @return Float
+     */
+    public function getMarginAttribute(): float
+    {
+        return (float) ($this->sale_price - $this->cost);
     }
 }

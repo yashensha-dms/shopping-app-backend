@@ -72,6 +72,7 @@ class Product extends Model implements HasMedia
         'external_button_text',
         'hsn_code',
         'barcode',
+        'cost',
         'created_by_id'
     ];
 
@@ -98,6 +99,7 @@ class Product extends Model implements HasMedia
         'review_ratings',
         'related_products',
         'cross_sell_products',
+        'margin',
     ];
 
     protected $hidden = [
@@ -139,6 +141,7 @@ class Product extends Model implements HasMedia
         'social_share' => 'integer',
         'encourage_order' => 'integer',
         'encourage_view' => 'integer',
+        'cost' => 'float',
         'cross_sell_products' => 'array'
     ];
 
@@ -350,5 +353,13 @@ class Product extends Model implements HasMedia
         if (Helpers::isUserLogin()) {
             return Helpers::user_review(Helpers::getCurrentUserId(), $this->id);
         }
+    }
+
+    /**
+     * @return Float
+     */
+    public function getMarginAttribute(): float
+    {
+        return (float) ($this->sale_price - $this->cost);
     }
 }

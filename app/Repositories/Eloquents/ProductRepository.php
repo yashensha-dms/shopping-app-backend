@@ -152,6 +152,7 @@ class ProductRepository extends BaseRepository
                 'tax_id' => $request->tax_id,
                 'status' => $request->status,
                 'is_approved' => $isAutoApprove ?? true,
+                'cost' => $request->cost,
                 'store_id' => $request->store_id,
             ]);
 
@@ -487,6 +488,7 @@ class ProductRepository extends BaseRepository
                 'stock_status' => $variation['stock_status'],
                 'variation_image_id' => $variation['variation_image_id'] ?? null,
                 'status' => $variation['status'],
+                'cost' => $variation['cost'] ?? null,
                 'product_id' => $product['id']
             ]);
 

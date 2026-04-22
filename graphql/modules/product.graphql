@@ -11,6 +11,8 @@ type Product {
     video_link: String
     price: Float
     sale_price: Float
+    cost: Float @can(ability: "viewCost")
+    margin: Float @can(ability: "viewCost")
     quantity: Int
     discount: Float
     weight: Int
@@ -102,6 +104,7 @@ input CreateProductInput {
     video_link: String
     price: Float
     sale_price: Float
+    cost: Float
     quantity: Int
     is_approved: Int
     discount: Float
@@ -163,6 +166,7 @@ input UpdateProductInput {
     price: Float
     is_approved: Int
     sale_price: Float
+    cost: Float
     quantity: Int
     discount: Float
     weight: Int

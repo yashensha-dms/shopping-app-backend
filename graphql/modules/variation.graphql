@@ -3,6 +3,8 @@ type Variation {
     name: String
     price: Float
     sale_price: Float
+    cost: Float @can(ability: "viewCost")
+    margin: Float @can(ability: "viewCost")
     quantity: Int
     sku: String
     discount: Float
@@ -22,6 +24,7 @@ input CreateVariationInput {
     name: String
     price: Float
     sale_price: Float
+    cost: Float
     quantity: Int
     sku: String
     discount: Float
@@ -37,6 +40,7 @@ input UpdateVariationInput {
     name: String
     price: Float
     sale_price: Float
+    cost: Float
     quantity: Int
     sku: String
     discount: Float
