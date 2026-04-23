@@ -62,7 +62,7 @@ class UpdateProductRequest extends FormRequest
             'is_return' => ['min:0', 'max:1'],
             'is_free_shipping' => ['min:0', 'max:1'],
             'is_changeable' => ['min:0', 'max:1'],
-            'discount' => ['nullable','numeric','regex:/^([0-9]{1,2}){1}(\.[0-9]{1,2})?$/'],
+            'discount' => ['nullable','numeric','between:0,100'],
             'is_external' => ['min:0', 'max:1'],
             'external_url' => ['required_if:is_external,==,1', 'nullable'],
             'external_button_text' => ['required_if:type,==,external', 'nullable'],
@@ -81,9 +81,9 @@ class UpdateProductRequest extends FormRequest
             'variations.*.name' => ['nullable','required_if:type,==,classified','string'],
             'variations.*.price' => ['nullable','required_if:type,==,classified','numeric'],
             'variations.*.cost' => ['nullable','numeric'],
-            'variations.*.sale_price' => ['nullable','min:'. (float)$this->input('variations.*.price')],
+            'variations.*.sale_price' => ['nullable','numeric'],
             'variations.*.stock_status' => ['nullable','required_if:type,==,classified', 'in:in_stock,out_of_stock,coming_soon'],
-            'variations.*.discount' => ['nullable', 'numeric', 'regex:/^([0-9]{1,2}){1}(\.[0-9]{1,2})?$/'],
+            'variations.*.discount' => ['nullable', 'numeric', 'between:0,100'],
             'variations.*.attribute_values' => ['nullable','required_if:type,==,classified','exists:attribute_values,id'],
             'variations.*.variation_image_id' => ['nullable','exists:attachments,id,deleted_at,NULL'],
             'variations.*.status' => ['required_if:type,==,classified','min:0','max:1'],
@@ -111,7 +111,7 @@ class UpdateProductRequest extends FormRequest
     public function messages()
     {
         return [
-            'discount.regex' => 'Enter discount between 0 to 99.99',
+            'discount.between' => 'Discount must be between 0 and 100',
             'video_provider.in' => 'Video Provider can in youtube or vimeo or daily_motion',
             'type.in' => 'Product type can be either simple or classified or external',
             'variations.*.stock_status.in' => 'Variations Stock status can be either in_stock or out_of_stock or coming_soon',
