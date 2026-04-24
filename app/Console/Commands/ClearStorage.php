@@ -2,9 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Blog;
 use App\Models\Page;
 use App\Models\User;
+use App\Models\Store;
+use App\Models\Review;
+use App\Models\Product;
 use App\Models\Category;
+use App\Models\Variation;
 use App\Models\Attachment;
 use App\Models\ThemeOption;
 use Illuminate\Console\Command;
@@ -45,12 +50,12 @@ class ClearStorage extends Command
 
         // ── 2. Find all orphaned attachment records (DB) ─────────────────────
         // "Attachment pool" media unlinked from core concepts
-        $orphanQuery   = Attachment::whereNotIn('id', $safeIds->toArray());
+        $orphanQuery   = Attachment::withTrashed()->whereNotIn('id', $safeIds->toArray());
         $orphanCount   = $orphanQuery->count();
 
         // ── 3. Find completely orphaned physical folders ─────────────────────
         // i.e., folders in storage that don't even have an attachment record
-        $allAttachmentDbIds = Attachment::pluck('id')->toArray();
+        $allAttachmentDbIds = Attachment::withTrashed()->pluck('id')->toArray();
         $physicalFolders = collect(File::directories($this->storagePath))
             ->map(fn($d) => ['path' => $d, 'id' => (int) basename($d)])
             ->filter(fn($d) => is_numeric(basename($d['path'])));
@@ -197,12 +202,12 @@ class ClearStorage extends Command
     {
         $safeIds = collect();
 
-        // User profile images (admin + any remaining)
+        // 1. User profile images (admin + any remaining)
         $safeIds = $safeIds->merge(
             User::withTrashed()->whereNotNull('profile_image_id')->pluck('profile_image_id')
         );
 
-        // Category images and icons
+        // 2. Category images and icons
         $safeIds = $safeIds->merge(
             Category::withTrashed()->whereNotNull('category_image_id')->pluck('category_image_id')
         );
@@ -210,15 +215,54 @@ class ClearStorage extends Command
             Category::withTrashed()->whereNotNull('category_icon_id')->pluck('category_icon_id')
         );
 
-        // Page meta images
+        // 3. Products: Thumbnails, Meta, Size Charts, and Galleries
+        $safeIds = $safeIds->merge(
+            Product::withTrashed()->whereNotNull('product_thumbnail_id')->pluck('product_thumbnail_id')
+        );
+        $safeIds = $safeIds->merge(
+            Product::withTrashed()->whereNotNull('product_meta_image_id')->pluck('product_meta_image_id')
+        );
+        $safeIds = $safeIds->merge(
+            Product::withTrashed()->whereNotNull('size_chart_image_id')->pluck('size_chart_image_id')
+        );
+        $safeIds = $safeIds->merge(
+            DB::table('product_images')->pluck('attachment_id')
+        );
+
+        // 4. Variations
+        $safeIds = $safeIds->merge(
+            Variation::whereNotNull('variation_image_id')->pluck('variation_image_id')
+        );
+
+        // 5. Stores: Logos and Covers
+        $safeIds = $safeIds->merge(
+            Store::withTrashed()->whereNotNull('store_logo_id')->pluck('store_logo_id')
+        );
+        $safeIds = $safeIds->merge(
+            Store::withTrashed()->whereNotNull('store_cover_id')->pluck('store_cover_id')
+        );
+
+        // 6. Blogs: Thumbnails and Meta
+        $safeIds = $safeIds->merge(
+            Blog::withTrashed()->whereNotNull('blog_thumbnail_id')->pluck('blog_thumbnail_id')
+        );
+        $safeIds = $safeIds->merge(
+            Blog::withTrashed()->whereNotNull('blog_meta_image_id')->pluck('blog_meta_image_id')
+        );
+
+        // 7. Reviews
+        $safeIds = $safeIds->merge(
+            Review::withTrashed()->whereNotNull('review_image_id')->pluck('review_image_id')
+        );
+
+        // 8. Page meta images
         if (class_exists(Page::class)) {
             $safeIds = $safeIds->merge(
                 Page::withTrashed()->whereNotNull('page_meta_image_id')->pluck('page_meta_image_id')
             );
         }
 
-        // ThemeOption JSON — extract every value that looks like an attachment ID
-        // e.g. "logo_id": 12, "favicon_id": 7, "header_image_id": 45 ...
+        // 9. ThemeOption JSON — extract every value that looks like an attachment ID
         ThemeOption::all()->each(function ($option) use (&$safeIds) {
             $raw = json_encode($option->getRawOriginal('options'));
             if (preg_match_all('/_id["\s]*:\s*([0-9]+)/', $raw, $matches)) {
