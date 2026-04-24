@@ -235,18 +235,18 @@ class Helpers
 
   public static function getProductPrice($product_id)
   {
-    return Product::where('id',$product_id)->first(['price', 'discount']);
+    return Product::where('id',$product_id)->first(['price', 'sale_price', 'discount']);
   }
 
   public static function getVariationPrice($variation_id)
   {
-    return Variation::where('id',$variation_id)->first(['price', 'discount']);
+    return Variation::where('id',$variation_id)->first(['price', 'sale_price', 'discount']);
   }
 
   public static function getSalePrice($product)
   {
     $productPrices = self::getPrice($product);
-    return $productPrices->price - (($productPrices->price * $productPrices->discount)/100);
+    return $productPrices->sale_price ?? $productPrices->price;
   }
 
   public static function getSubTotal($price, $quantity)

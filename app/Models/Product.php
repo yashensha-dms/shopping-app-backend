@@ -118,7 +118,7 @@ class Product extends Model implements HasMedia
         'weight' => 'integer',
         'price' => 'float',
         'sale_price' => 'float',
-        'discount' => 'integer',
+        'discount' => 'float',
         'shipping_days' => 'integer',
         'show_stock_quantity' => 'integer',
         'tax_id' => 'integer',

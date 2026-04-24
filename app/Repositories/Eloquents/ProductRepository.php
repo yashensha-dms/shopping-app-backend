@@ -88,10 +88,6 @@ class ProductRepository extends BaseRepository
             }
 
             if (isset($request['variations']) && !empty($request['variations']) && $request->type == 'classified') {
-                $price = min(array_column($request['variations'], 'price'));
-                $minPriceVariation = $this->getMinPriceVariation($request, $price);
-                $discount = $minPriceVariation['discount'];
-                $sale_price = round($price  - (($price  * $discount)/100), 2);
                 $quantity = max(array_column($request['variations'], 'quantity'));
                 $stock_status = StockStatus::OUT_OF_STOCK;
 
@@ -107,10 +103,7 @@ class ProductRepository extends BaseRepository
                 }
             }
 
-            if (isset($request->discount)) {
-                $mrpPrice = $request->price ?? $price;
-                $sale_price = round($mrpPrice - (($mrpPrice * $request->discount)/100), 2);
-            }
+
 
             $product = $this->model->create([
                 'name' => $request->name,
@@ -120,9 +113,9 @@ class ProductRepository extends BaseRepository
                 'unit' => $request->unit,
                 'quantity' => $request->quantity ?? $quantity,
                 'weight' => $request->weight,
-                'price' => $price ?? $request->price,
-                'sale_price' => $sale_price ?? $request->price,
-                'discount' => $discount ?? $request->discount,
+                'price' => $request->price,
+                'sale_price' => $request->sale_price ?? $request->price,
+                'discount' => $request->discount,
                 'sku' => $request->sku,
                 'is_external' => $request->is_external,
                 'external_url' => $request->external_url,
@@ -181,9 +174,6 @@ class ProductRepository extends BaseRepository
         try {
 
             if (isset($request['variations']) && !empty($request['variations']) && $request['type'] == 'classified') {
-                $request['price'] = min(array_column($request['variations'], 'price'));
-                $minPriceVariation = $this->getMinPriceVariation($request,  $request['price']);
-                $request['discount']  = $minPriceVariation['discount'];
                 $request['quantity'] = max(array_column($request['variations'], 'quantity'));
             }
 
@@ -194,9 +184,7 @@ class ProductRepository extends BaseRepository
                 }
             }
 
-            if (isset($request['discount'])) {
-                $request['sale_price'] = round($request['price'] - (($request['price'] * $request['discount'])/100),2);
-            }
+
 
             $product = $this->model->findOrFail($id);
             $product->update($request);
@@ -249,10 +237,7 @@ class ProductRepository extends BaseRepository
 
             if (isset($request['variations']) && !empty($request['variations']) && $request['type'] == 'classified') {
                 foreach ($request['variations'] as $variation) {
-                    $variation['sale_price'] = $variation['price'];
-                    if (isset($variation['discount'])) {
-                        $variation['sale_price'] = round($variation['price'] - (($variation['price'] * $variation['discount'])/100),2);
-                    }
+                    $variation['sale_price'] = $variation['sale_price'] ?? $variation['price'];
 
                     if (isset($variation['quantity'])) {
                         $variation['stock_status'] = StockStatus::OUT_OF_STOCK;
@@ -466,10 +451,8 @@ class ProductRepository extends BaseRepository
     public function createProductVariation($product, $variation)
     {
         if (isset($variation['attribute_values'])) {
-            $variation['sale_price'] = $variation['price'];
-            if (isset($variation['discount'])) {
-                $variation['sale_price'] = round($variation['price'] - (($variation['price'] * $variation['discount'])/100),2);
-            }
+            $variation['sale_price'] = $variation['sale_price'] ?? $variation['price'];
+
 
             if (isset($variation['quantity'])) {
                 $variation['stock_status'] = StockStatus::OUT_OF_STOCK;
