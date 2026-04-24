@@ -88,21 +88,25 @@ class ClearStorage extends Command
 
         // ── 5. Delete orphaned attachment records via Eloquent ────────────────
         if ($orphanCount > 0) {
-            $this->info("Deleting {$orphanCount} orphaned DB attachments (+ their files if present)...");
+            $this->info("Force deleting {$orphanCount} orphaned DB attachments (+ their files)...");
             
-            // Re-fetch since cursor/each can be tricky
             $ids = $orphanQuery->pluck('id');
+            $bar = $this->output->createProgressBar($orphanCount);
+            $bar->start();
+
             foreach ($ids->chunk(100) as $chunk) {
-                Attachment::whereIn('id', $chunk)->get()->each(function ($a) {
-                    $a->delete();
+                Attachment::withTrashed()->whereIn('id', $chunk)->get()->each(function ($a) use ($bar) {
+                    $a->forceDelete();
+                    $bar->advance();
                 });
             }
+            $bar->finish();
             $this->newLine();
         }
 
         // ── 6. Physical sweep — catch phantom folders ───────────────────────
         // Only keep folders that belong to an Attachment STILL in the database
-        $remainingDbIds = Attachment::pluck('id')->toArray();
+        $remainingDbIds = Attachment::withTrashed()->pluck('id')->toArray();
         $leftoverFolders = collect(File::directories($this->storagePath))
             ->map(fn($d) => ['path' => $d, 'id' => (int) basename($d)])
             ->filter(fn($d) => is_numeric(basename($d['path'])))
