@@ -88,7 +88,8 @@ class ProductController extends Controller
      *              @OA\Property(property="sale_price", type="number"),
      *              @OA\Property(property="store_id", type="integer"),
      *              @OA\Property(property="category_ids", type="array", @OA\Items(type="integer")),
-     *              @OA\Property(property="tag_ids", type="array", @OA\Items(type="integer"))
+     *              @OA\Property(property="tag_ids", type="array", @OA\Items(type="integer")),
+     *              @OA\Property(property="cost", type="number", example=15.50)
      *          )
      *      ),
      *      @OA\Response(response=201, description="Product created successfully"),
@@ -142,7 +143,8 @@ class ProductController extends Controller
      *          @OA\Property(property="name", type="string"),
      *          @OA\Property(property="description", type="string"),
      *          @OA\Property(property="price", type="number"),
-     *          @OA\Property(property="sale_price", type="number")
+     *          @OA\Property(property="sale_price", type="number"),
+     *          @OA\Property(property="cost", type="number")
      *      )),
      *      @OA\Response(response=200, description="Product updated successfully"),
      *      @OA\Response(response=401, description="Unauthenticated"),

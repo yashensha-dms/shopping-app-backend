@@ -151,37 +151,7 @@ class AuthController extends Controller
         return $user;
     }
 
-    /**
-     * @OA\Post(
-     *      path="/register",
-     *      operationId="register",
-     *      tags={"Authentication"},
-     *      summary="User Registration",
-     *      description="Register a new user account",
-     *      @OA\RequestBody(
-     *          required=true,
-     *          @OA\JsonContent(
-     *              required={"name","email","password","password_confirmation","country_code","phone"},
-     *              @OA\Property(property="name", type="string", example="John Doe"),
-     *              @OA\Property(property="email", type="string", format="email", example="user@example.com"),
-     *              @OA\Property(property="password", type="string", format="password", example="password123"),
-     *              @OA\Property(property="password_confirmation", type="string", example="password123"),
-     *              @OA\Property(property="country_code", type="string", example="+1"),
-     *              @OA\Property(property="phone", type="string", example="1234567890")
-     *          )
-     *      ),
-     *      @OA\Response(
-     *          response=200,
-     *          description="Successful registration",
-     *          @OA\JsonContent(
-     *              @OA\Property(property="access_token", type="string"),
-     *              @OA\Property(property="permissions", type="array", @OA\Items(type="string")),
-     *              @OA\Property(property="success", type="boolean", example=true)
-     *          )
-     *      ),
-     *      @OA\Response(response=422, description="Validation error")
-     * )
-     */
+    
     public function register(Request $request)
     {
         DB::beginTransaction();
@@ -236,24 +206,7 @@ class AuthController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *      path="/forgot-password",
-     *      operationId="forgotPassword",
-     *      tags={"Authentication"},
-     *      summary="Forgot Password",
-     *      description="Send password reset token to email",
-     *      @OA\RequestBody(
-     *          required=true,
-     *          @OA\JsonContent(
-     *              required={"email"},
-     *              @OA\Property(property="email", type="string", format="email", example="user@example.com")
-     *          )
-     *      ),
-     *      @OA\Response(response=200, description="Verification code sent"),
-     *      @OA\Response(response=422, description="Validation error")
-     * )
-     */
+    
     public function forgotPassword(Request $request)
     {
         try {
@@ -363,6 +316,18 @@ class AuthController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/logout",
+     *      operationId="logout",
+     *      tags={"Authentication"},
+     *      summary="User Logout",
+     *      description="Logout current user and revoke token",
+     *      security={{"sanctum":{}}},
+     *      @OA\Response(response=200, description="Successful logout"),
+     *      @OA\Response(response=401, description="Unauthenticated")
+     * )
+     */
     public function logout(Request $request)
     {
         // Safely check for token and delete if exists
