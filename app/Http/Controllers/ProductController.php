@@ -381,4 +381,9 @@ class ProductController extends Controller
             'variations'
         ]);
     }
+
+    public function showByBarcode($barcode)
+    {
+        return $this->repository->getProductByBarcode($barcode);
+    }
 }

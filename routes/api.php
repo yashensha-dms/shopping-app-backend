@@ -38,6 +38,8 @@ Route::post('/ccavenue/webhook', 'App\Http\Controllers\WebhookController@ccavenu
 // Authentication
 Route::post('login', [AuthController::class, 'login'])
     ->middleware('throttle:login');
+Route::post('backend/login', [AuthController::class, 'backendLogin'])
+    ->middleware('throttle:login');
 Route::post('/register', 'App\Http\Controllers\AuthController@register');
 Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
     ->middleware('throttle:forgot-password');
@@ -57,6 +59,7 @@ Route::apiResource('product', 'App\Http\Controllers\ProductController',[
   'only' => ['index', 'show'],
 ]);
 Route::get('product/slug/{slug}', 'App\Http\Controllers\ProductController@getProductBySlug');
+Route::get('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@showByBarcode');
 
 // Attributes
 Route::apiResource('attribute', 'App\Http\Controllers\AttributeController',[

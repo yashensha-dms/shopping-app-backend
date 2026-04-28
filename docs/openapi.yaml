@@ -18,6 +18,8 @@ servers:
 tags:
   - name: Authentication
     description: Login, register, and password management
+  - name: Admin Authentication
+    description: Login for Admins, Vendors, and Staff
   - name: Account
     description: Authenticated user profile management
   - name: Products
@@ -319,6 +321,38 @@ paths:
                 $ref: "#/components/schemas/ValidationErrorResponse"
         "429":
           description: Too many requests (throttled)
+
+  /backend/login:
+    post:
+      tags: [Admin Authentication]
+      operationId: backendLogin
+      summary: Admin / Staff Login
+      description: Authenticate as an Admin or Vendor to get an administrative token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@example.com
+                password:
+                  type: string
+                  format: password
+                  example: password123
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        "400":
+          description: Invalid credentials
 
   /register:
     post:
@@ -985,6 +1019,46 @@ paths:
                 $ref: "#/components/schemas/Product"
         "404":
           description: Not found
+
+  /product/barcode/{barcode}:
+    get:
+      tags: [Products]
+      operationId: getProductByBarcode
+      summary: Get product or variation by barcode
+      description: Returns variation details if the barcode matches a variation, otherwise returns product details.
+      parameters:
+        - name: barcode
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "1234567890123"
+      responses:
+        "200":
+          description: Successful lookup
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Product"
+                  - type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      price:
+                        type: number
+                      sale_price:
+                        type: number
+                      sku:
+                        type: string
+                      barcode:
+                        type: string
+                      product_id:
+                        type: integer
+        "404":
+          description: No product or variation found with this barcode
 
   /product/{id}/{status}:
     put:

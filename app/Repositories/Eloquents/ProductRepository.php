@@ -528,4 +528,23 @@ class ProductRepository extends BaseRepository
             throw new ExceptionHandler($e->getMessage(), $e->getCode());
         }
     }
+
+    public function getProductByBarcode($barcode)
+    {
+        try {
+            $variation = $this->variations->where('barcode', $barcode)->first();
+            if ($variation) {
+                return $variation;
+            }
+
+            return $this->model->where('barcode', $barcode)
+                ->with(config('enums.product.with'))
+                ->firstOrFail()
+                ->setAppends(config('enums.product.appends'))
+                ->makeVisible(config('enums.product.visible'));
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
 }
