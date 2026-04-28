@@ -391,7 +391,7 @@ class ProductController extends Controller
      *      description="Returns variation details if the barcode matches a variation, otherwise returns product details.",
      *      @OA\Parameter(
      *          name="barcode",
-     *          in: path,
+     *          in="path",
      *          required=true,
      *          @OA\Schema(type="string", example="1234567890123")
      *      ),
