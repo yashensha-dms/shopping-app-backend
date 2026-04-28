@@ -12,8 +12,10 @@ info:
     name: API Support
 
 servers:
+  - url: https://mstore.primeads.ai/api
+    description: Production Server
   - url: /api
-    description: Default API server
+    description: Local / Default API server
 
 tags:
   - name: Authentication
