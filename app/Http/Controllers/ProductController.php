@@ -382,6 +382,33 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *      path="/product/barcode/{barcode}",
+     *      operationId="getProductByBarcode",
+     *      tags={"Products"},
+     *      summary="Get product or variation by barcode",
+     *      description="Returns variation details if the barcode matches a variation, otherwise returns product details.",
+     *      @OA\Parameter(
+     *          name="barcode",
+     *          in: path,
+     *          required=true,
+     *          @OA\Schema(type="string", example="1234567890123")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful lookup",
+     *          @OA\JsonContent(
+     *              type="object",
+     *              description="Returns either a Product or Variation object"
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=404,
+     *          description="No product or variation found with this barcode"
+     *      )
+     * )
+     */
     public function showByBarcode($barcode)
     {
         return $this->repository->getProductByBarcode($barcode);

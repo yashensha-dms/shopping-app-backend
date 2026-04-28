@@ -96,6 +96,36 @@ class AuthController extends Controller
         throw new Exception('The multi-vendor feature is currently deactivated.', 403);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/backend/login",
+     *      operationId="backendLogin",
+     *      tags={"Admin Authentication"},
+     *      summary="Admin / Staff Login",
+     *      description="Authenticate as an Admin or Vendor to get an administrative token.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"email","password"},
+     *              @OA\Property(property="email", type="string", format="email", example="admin@example.com"),
+     *              @OA\Property(property="password", type="string", format="password", example="password123")
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Login successful",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="access_token", type="string", example="1|abc123..."),
+     *              @OA\Property(property="permissions", type="array", @OA\Items(type="string")),
+     *              @OA\Property(property="success", type="boolean", example=true)
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=400,
+     *          description="Invalid credentials"
+     *      )
+     * )
+     */
     public function backendLogin(Request $request)
     {
         $user = $this->verifyLogin($request);
