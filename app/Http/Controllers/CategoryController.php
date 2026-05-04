@@ -74,10 +74,11 @@ class CategoryController extends Controller
      *      @OA\RequestBody(required=true, @OA\JsonContent(
      *          required={"name"},
      *          @OA\Property(property="name", type="string", example="Electronics"),
-     *          @OA\Property(property="description", type="string"),
-     *          @OA\Property(property="type", type="string"),
-     *          @OA\Property(property="parent_id", type="integer"),
-     *          @OA\Property(property="category_image_id", type="integer")
+     *          @OA\Property(property="description", type="string", example="Category for electronic items"),
+     *          @OA\Property(property="type", type="string", example="product"),
+     *          @OA\Property(property="parent_id", type="integer", example=2),
+     *          @OA\Property(property="category_image_id", type="integer", example=0),
+     *          @OA\Property(property="status", type="integer", example=1)
      *      )),
      *      @OA\Response(response=201, description="Category created successfully"),
      *      @OA\Response(response=401, description="Unauthenticated"),
@@ -127,10 +128,12 @@ class CategoryController extends Controller
      *      security={{"sanctum":{}}},
      *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *      @OA\RequestBody(required=true, @OA\JsonContent(
-     *          @OA\Property(property="name", type="string"),
-     *          @OA\Property(property="description", type="string"),
-     *          @OA\Property(property="type", type="string"),
-     *          @OA\Property(property="parent_id", type="integer")
+     *          @OA\Property(property="name", type="string", example="Electronics"),
+     *          @OA\Property(property="description", type="string", example="Category for electronic items"),
+     *          @OA\Property(property="type", type="string", example="product"),
+     *          @OA\Property(property="parent_id", type="integer", example=2),
+     *          @OA\Property(property="category_image_id", type="integer", example=0),
+     *          @OA\Property(property="status", type="integer", example=1)
      *      )),
      *      @OA\Response(response=200, description="Category updated successfully"),
      *      @OA\Response(response=401, description="Unauthenticated"),

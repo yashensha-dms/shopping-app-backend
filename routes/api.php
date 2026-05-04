@@ -55,11 +55,11 @@ Route::get('/login', function () {
 })->name('login');
 
 // Products
+Route::get('product/slug/{slug}', 'App\Http\Controllers\ProductController@getProductBySlug');
+Route::get('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@showByBarcode');
 Route::apiResource('product', 'App\Http\Controllers\ProductController',[
   'only' => ['index', 'show'],
 ]);
-Route::get('product/slug/{slug}', 'App\Http\Controllers\ProductController@getProductBySlug');
-Route::get('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@showByBarcode');
 
 // Attributes
 Route::apiResource('attribute', 'App\Http\Controllers\AttributeController',[
@@ -207,6 +207,12 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
   Route::post('role/deleteAll', 'App\Http\Controllers\RoleController@deleteAll')->middleware('can:role.destroy');
 
   // Products
+  // Products (Barcode-based operations)
+  Route::put('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@updateByBarcode')->middleware('can:product.edit');
+  Route::delete('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@destroyByBarcode')->middleware('can:product.destroy');
+  Route::put('product/barcode/{barcode}/{status}', 'App\Http\Controllers\ProductController@statusByBarcode')->middleware('can:product.edit');
+  Route::put('product/approve/barcode/{barcode}/{status}', 'App\Http\Controllers\ProductController@approveByBarcode')->middleware('can:product.edit');
+
   Route::apiResource('product', 'App\Http\Controllers\ProductController', [
     'only' => ['store', 'update', 'destroy'],
   ]);
@@ -216,12 +222,6 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
   Route::post('product/csv/import', 'App\Http\Controllers\ProductController@import')->middleware('can:product.create');
   Route::put('product/approve/{id}/{status}', 'App\Http\Controllers\ProductController@approve')->middleware('can:product.edit');
   Route::post('product/deleteAll', 'App\Http\Controllers\ProductController@deleteAll')->middleware('can:product.destroy');
-
-  // Products (Barcode-based operations)
-  Route::put('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@updateByBarcode')->middleware('can:product.edit');
-  Route::delete('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@destroyByBarcode')->middleware('can:product.destroy');
-  Route::put('product/barcode/{barcode}/{status}', 'App\Http\Controllers\ProductController@statusByBarcode')->middleware('can:product.edit');
-  Route::put('product/approve/barcode/{barcode}/{status}', 'App\Http\Controllers\ProductController@approveByBarcode')->middleware('can:product.edit');
 
   // Attributes & Attribute Values
   Route::apiResource('attribute', 'App\Http\Controllers\AttributeController',[
