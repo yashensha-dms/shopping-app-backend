@@ -103,16 +103,7 @@ class ProductController extends Controller
     }
 
     /**
-     * @OA\Get(
-     *      path="/product/{id}",
-     *      operationId="getProductById",
-     *      tags={"Products"},
-     *      summary="Get product by ID",
-     *      description="Returns a single product",
-     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *      @OA\Response(response=200, description="Successful operation"),
-     *      @OA\Response(response=404, description="Product not found")
-     * )
+     * Get product by ID (internal use, not exposed in Swagger).
      */
     public function show(Product $product)
     {
@@ -131,25 +122,7 @@ class ProductController extends Controller
     }
 
     /**
-     * @OA\Put(
-     *      path="/product/{id}",
-     *      operationId="updateProduct",
-     *      tags={"Products"},
-     *      summary="Update an existing product",
-     *      description="Update product details (requires authentication)",
-     *      security={{"sanctum":{}}},
-     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *      @OA\RequestBody(required=true, @OA\JsonContent(
-     *          @OA\Property(property="name", type="string"),
-     *          @OA\Property(property="description", type="string"),
-     *          @OA\Property(property="price", type="number"),
-     *          @OA\Property(property="sale_price", type="number"),
-     *          @OA\Property(property="cost", type="number")
-     *      )),
-     *      @OA\Response(response=200, description="Product updated successfully"),
-     *      @OA\Response(response=401, description="Unauthenticated"),
-     *      @OA\Response(response=404, description="Product not found")
-     * )
+     * Update product by ID (internal use, not exposed in Swagger).
      */
     public function update(UpdateProductRequest $request, Product $product)
     {
@@ -157,18 +130,7 @@ class ProductController extends Controller
     }
 
     /**
-     * @OA\Delete(
-     *      path="/product/{id}",
-     *      operationId="deleteProduct",
-     *      tags={"Products"},
-     *      summary="Delete a product",
-     *      description="Delete a product (requires authentication)",
-     *      security={{"sanctum":{}}},
-     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *      @OA\Response(response=200, description="Product deleted successfully"),
-     *      @OA\Response(response=401, description="Unauthenticated"),
-     *      @OA\Response(response=404, description="Product not found")
-     * )
+     * Delete product by ID (internal use, not exposed in Swagger).
      */
     public function destroy(Request $request, Product $product)
     {
@@ -409,8 +371,31 @@ class ProductController extends Controller
     }
 
     /**
-     * Update a product by barcode.
-     * Resolves barcode to product ID, then delegates to the existing update logic.
+     * @OA\Put(
+     *      path="/product/barcode/{barcode}",
+     *      operationId="updateProductByBarcode",
+     *      tags={"Products"},
+     *      summary="Update a product by barcode",
+     *      description="Look up a product or variation by barcode and update it (requires authentication)",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="barcode",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="string", example="1234567890123")
+     *      ),
+     *      @OA\RequestBody(required=true, @OA\JsonContent(
+     *          @OA\Property(property="name", type="string"),
+     *          @OA\Property(property="description", type="string"),
+     *          @OA\Property(property="price", type="number"),
+     *          @OA\Property(property="sale_price", type="number"),
+     *          @OA\Property(property="cost", type="number"),
+     *          @OA\Property(property="status", type="boolean")
+     *      )),
+     *      @OA\Response(response=200, description="Product updated successfully"),
+     *      @OA\Response(response=401, description="Unauthenticated"),
+     *      @OA\Response(response=404, description="No product or variation found with this barcode")
+     * )
      */
     public function updateByBarcode(Request $request, $barcode)
     {
