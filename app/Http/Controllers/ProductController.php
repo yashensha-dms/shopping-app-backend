@@ -192,10 +192,6 @@ class ProductController extends Controller
         return $this->repository->approve($id, $status);
     }
 
-    public function deleteAll(Request $request)
-    {
-        return $this->repository->deleteAll($request->ids);
-    }
 
     public function import()
     {
@@ -212,10 +208,8 @@ class ProductController extends Controller
         return $this->repository->export();
     }
 
-    public function replicate(Request $request)
-    {
-        return $this->repository->replicate($request->ids);
-    }
+
+
 
     /**
      * @OA\Get(
@@ -412,5 +406,80 @@ class ProductController extends Controller
     public function showByBarcode($barcode)
     {
         return $this->repository->getProductByBarcode($barcode);
+    }
+
+    /**
+     * Update a product by barcode.
+     * Resolves barcode to product ID, then delegates to the existing update logic.
+     */
+    public function updateByBarcode(Request $request, $barcode)
+    {
+        try {
+            $id = $this->repository->resolveProductIdByBarcode($barcode);
+            return $this->repository->update($request->all(), $id);
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
+
+    /**
+     * Delete a product by barcode.
+     */
+    public function destroyByBarcode($barcode)
+    {
+        try {
+            $id = $this->repository->resolveProductIdByBarcode($barcode);
+            return $this->repository->destroy($id);
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
+
+    /**
+     * Toggle product status by barcode.
+     */
+    public function statusByBarcode($barcode, $status)
+    {
+        try {
+            $id = $this->repository->resolveProductIdByBarcode($barcode);
+            return $this->repository->status($id, $status);
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
+
+    /**
+     * Approve or reject a product by barcode.
+     */
+    public function approveByBarcode($barcode, $status)
+    {
+        try {
+            $id = $this->repository->resolveProductIdByBarcode($barcode);
+            return $this->repository->approve($id, $status);
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
+
+    public function deleteAll(Request $request)
+    {
+        if ($request->barcodes) {
+            return $this->repository->deleteAllByBarcodes($request->barcodes);
+        }
+
+        return $this->repository->deleteAll($request->ids);
+    }
+
+    public function replicate(Request $request)
+    {
+        if ($request->barcodes) {
+            return $this->repository->replicateByBarcodes($request->barcodes);
+        }
+
+        return $this->repository->replicate($request->ids);
     }
 }

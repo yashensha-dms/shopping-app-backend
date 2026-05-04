@@ -547,4 +547,60 @@ class ProductRepository extends BaseRepository
             throw new ExceptionHandler($e->getMessage(), $e->getCode());
         }
     }
+
+    /**
+     * Resolve a product ID from a barcode.
+     * Checks variations first, then products table.
+     *
+     * @param string $barcode
+     * @return int Product ID
+     * @throws ExceptionHandler if no product/variation found
+     */
+    public function resolveProductIdByBarcode($barcode)
+    {
+        try {
+            // Check variations first
+            $variation = $this->variations->where('barcode', $barcode)->first();
+            if ($variation) {
+                return $variation->product_id;
+            }
+
+            // Fall back to products table
+            $product = $this->model->where('barcode', $barcode)->firstOrFail();
+            return $product->id;
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler('No product or variation found with barcode: ' . $barcode, 404);
+        }
+    }
+
+    public function deleteAllByBarcodes($barcodes)
+    {
+        try {
+            $ids = [];
+            foreach ($barcodes as $barcode) {
+                $ids[] = $this->resolveProductIdByBarcode($barcode);
+            }
+
+            return $this->model->whereIn('id', array_unique($ids))->delete();
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
+
+    public function replicateByBarcodes($barcodes)
+    {
+        try {
+            $ids = [];
+            foreach ($barcodes as $barcode) {
+                $ids[] = $this->resolveProductIdByBarcode($barcode);
+            }
+
+            return $this->replicate(array_unique($ids));
+
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
 }

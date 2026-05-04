@@ -925,81 +925,6 @@ paths:
         "422":
           description: Validation error
 
-  /product/{id}:
-    get:
-      tags: [Products]
-      operationId: getProductById
-      summary: Get product by ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Product details
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Product"
-        "404":
-          description: Not found
-    put:
-      tags: [Products]
-      operationId: updateProduct
-      summary: Update a product
-      security:
-        - sanctum: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
-                price:
-                  type: number
-                sale_price:
-                  type: number
-                status:
-                  type: boolean
-      responses:
-        "200":
-          description: Product updated
-        "401":
-          description: Unauthenticated
-        "404":
-          description: Not found
-    delete:
-      tags: [Products]
-      operationId: deleteProduct
-      summary: Delete a product
-      security:
-        - sanctum: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Deleted
-        "401":
-          description: Unauthenticated
-        "404":
-          description: Not found
 
   /product/slug/{slug}:
     get:
@@ -1061,20 +986,81 @@ paths:
                         type: integer
         "404":
           description: No product or variation found with this barcode
-
-  /product/{id}/{status}:
     put:
       tags: [Products]
-      operationId: updateProductStatus
-      summary: Toggle product status (Admin)
+      operationId: updateProductByBarcode
+      summary: Update a product by barcode
+      description: Look up a product or variation by barcode and update it.
       security:
         - sanctum: []
       parameters:
-        - name: id
+        - name: barcode
           in: path
           required: true
           schema:
-            type: integer
+            type: string
+            example: "1234567890123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                sale_price:
+                  type: number
+                status:
+                  type: boolean
+      responses:
+        "200":
+          description: Product updated
+        "401":
+          description: Unauthenticated
+        "404":
+          description: No product or variation found with this barcode
+    delete:
+      tags: [Products]
+      operationId: deleteProductByBarcode
+      summary: Delete a product by barcode
+      description: Look up a product or variation by barcode and delete it.
+      security:
+        - sanctum: []
+      parameters:
+        - name: barcode
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "1234567890123"
+      responses:
+        "200":
+          description: Deleted
+        "401":
+          description: Unauthenticated
+        "404":
+          description: No product or variation found with this barcode
+
+  /product/barcode/{barcode}/{status}:
+    put:
+      tags: [Products]
+      operationId: updateProductStatusByBarcode
+      summary: Toggle product status by barcode (Admin)
+      description: Look up a product by barcode and toggle its status.
+      security:
+        - sanctum: []
+      parameters:
+        - name: barcode
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "1234567890123"
         - name: status
           in: path
           required: true
@@ -1084,20 +1070,25 @@ paths:
       responses:
         "200":
           description: Status updated
+        "404":
+          description: No product found with this barcode
 
-  /product/approve/{id}/{status}:
+
+  /product/approve/barcode/{barcode}/{status}:
     put:
       tags: [Products]
-      operationId: approveProduct
-      summary: Approve or reject a product (Admin)
+      operationId: approveProductByBarcode
+      summary: Approve or reject a product by barcode (Admin)
+      description: Look up a product by barcode and approve or reject it.
       security:
         - sanctum: []
       parameters:
-        - name: id
+        - name: barcode
           in: path
           required: true
           schema:
-            type: integer
+            type: string
+            example: "1234567890123"
         - name: status
           in: path
           required: true
@@ -1106,6 +1097,8 @@ paths:
       responses:
         "200":
           description: Approval updated
+        "404":
+          description: No product found with this barcode
 
   /product/deleteAll:
     post:
@@ -1120,12 +1113,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ids]
+              required: [barcodes]
               properties:
-                ids:
+                barcodes:
                   type: array
                   items:
-                    type: integer
+                    type: string
+                  description: Product barcodes to delete
       responses:
         "200":
           description: Deleted
@@ -1143,12 +1137,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ids]
+              required: [barcodes]
               properties:
-                ids:
+                barcodes:
                   type: array
                   items:
-                    type: integer
+                    type: string
+                  description: Product barcodes to replicate
       responses:
         "200":
           description: Products replicated

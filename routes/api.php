@@ -217,6 +217,12 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
   Route::put('product/approve/{id}/{status}', 'App\Http\Controllers\ProductController@approve')->middleware('can:product.edit');
   Route::post('product/deleteAll', 'App\Http\Controllers\ProductController@deleteAll')->middleware('can:product.destroy');
 
+  // Products (Barcode-based operations)
+  Route::put('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@updateByBarcode')->middleware('can:product.edit');
+  Route::delete('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@destroyByBarcode')->middleware('can:product.destroy');
+  Route::put('product/barcode/{barcode}/{status}', 'App\Http\Controllers\ProductController@statusByBarcode')->middleware('can:product.edit');
+  Route::put('product/approve/barcode/{barcode}/{status}', 'App\Http\Controllers\ProductController@approveByBarcode')->middleware('can:product.edit');
+
   // Attributes & Attribute Values
   Route::apiResource('attribute', 'App\Http\Controllers\AttributeController',[
     'only' => ['store', 'update', 'destroy'],
