@@ -138,17 +138,16 @@ class ProductController extends Controller
     }
 
     /**
-     * Update Status the specified resource from storage.
-     *
-     * @param  int  $id
-     * @param int $status
-     * @return \Illuminate\Http\Response
+     * Update product status by ID (internal use, not exposed in Swagger).
      */
     public function status($id, $status)
     {
         return $this->repository->status($id, $status);
     }
 
+    /**
+     * Approve product by ID (internal use, not exposed in Swagger).
+     */
     public function approve($id, $status)
     {
         return $this->repository->approve($id, $status);
@@ -409,7 +408,18 @@ class ProductController extends Controller
     }
 
     /**
-     * Delete a product by barcode.
+     * @OA\Delete(
+     *      path="/product/barcode/{barcode}",
+     *      operationId="deleteProductByBarcode",
+     *      tags={"Products"},
+     *      summary="Delete a product by barcode",
+     *      description="Look up a product by barcode and delete it (requires authentication)",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="barcode", in="path", required=true, @OA\Schema(type="string", example="1234567890123")),
+     *      @OA\Response(response=200, description="Deleted"),
+     *      @OA\Response(response=401, description="Unauthenticated"),
+     *      @OA\Response(response=404, description="No product or variation found with this barcode")
+     * )
      */
     public function destroyByBarcode($barcode)
     {
@@ -423,7 +433,18 @@ class ProductController extends Controller
     }
 
     /**
-     * Toggle product status by barcode.
+     * @OA\Put(
+     *      path="/product/barcode/{barcode}/{status}",
+     *      operationId="updateProductStatusByBarcode",
+     *      tags={"Products"},
+     *      summary="Toggle product status by barcode (Admin)",
+     *      description="Look up a product by barcode and toggle its status",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="barcode", in="path", required=true, @OA\Schema(type="string", example="1234567890123")),
+     *      @OA\Parameter(name="status", in="path", required=true, @OA\Schema(type="integer", enum={0, 1})),
+     *      @OA\Response(response=200, description="Status updated"),
+     *      @OA\Response(response=404, description="No product found with this barcode")
+     * )
      */
     public function statusByBarcode($barcode, $status)
     {
@@ -437,7 +458,18 @@ class ProductController extends Controller
     }
 
     /**
-     * Approve or reject a product by barcode.
+     * @OA\Put(
+     *      path="/product/approve/barcode/{barcode}/{status}",
+     *      operationId="approveProductByBarcode",
+     *      tags={"Products"},
+     *      summary="Approve or reject a product by barcode (Admin)",
+     *      description="Look up a product by barcode and approve or reject it",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="barcode", in="path", required=true, @OA\Schema(type="string", example="1234567890123")),
+     *      @OA\Parameter(name="status", in="path", required=true, @OA\Schema(type="integer", enum={0, 1})),
+     *      @OA\Response(response=200, description="Approval updated"),
+     *      @OA\Response(response=404, description="No product found with this barcode")
+     * )
      */
     public function approveByBarcode($barcode, $status)
     {
@@ -450,6 +482,22 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/product/deleteAll",
+     *      operationId="deleteAllProducts",
+     *      tags={"Products"},
+     *      summary="Bulk delete products",
+     *      description="Delete multiple products by IDs or barcodes",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(required=true, @OA\JsonContent(
+     *          @OA\Property(property="ids", type="array", @OA\Items(type="integer"), description="Product IDs to delete"),
+     *          @OA\Property(property="barcodes", type="array", @OA\Items(type="string"), description="Product barcodes to delete")
+     *      )),
+     *      @OA\Response(response=200, description="Deleted"),
+     *      @OA\Response(response=401, description="Unauthenticated")
+     * )
+     */
     public function deleteAll(Request $request)
     {
         if ($request->barcodes) {
@@ -459,6 +507,22 @@ class ProductController extends Controller
         return $this->repository->deleteAll($request->ids);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/product/replicate",
+     *      operationId="replicateProduct",
+     *      tags={"Products"},
+     *      summary="Duplicate product(s)",
+     *      description="Replicate products by IDs or barcodes",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(required=true, @OA\JsonContent(
+     *          @OA\Property(property="ids", type="array", @OA\Items(type="integer"), description="Product IDs to replicate"),
+     *          @OA\Property(property="barcodes", type="array", @OA\Items(type="string"), description="Product barcodes to replicate")
+     *      )),
+     *      @OA\Response(response=200, description="Products replicated"),
+     *      @OA\Response(response=401, description="Unauthenticated")
+     * )
+     */
     public function replicate(Request $request)
     {
         if ($request->barcodes) {
