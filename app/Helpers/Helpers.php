@@ -559,4 +559,16 @@ class Helpers
       }
     }
   }
+
+  public static function restockProductStock(Order $order)
+  {
+    foreach ($order->products as $product) {
+      $product = $product->pivot;
+      if (isset($product->variation_id)) {
+        self::incrementVariationQuantity($product->variation_id, $product->quantity);
+      } else {
+        self::incrementProductQuantity($product->product_id, $product->quantity);
+      }
+    }
+  }
 }

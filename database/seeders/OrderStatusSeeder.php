@@ -23,39 +23,52 @@ class OrderStatusSeeder extends Seeder
                 'sequence' => '1'
             ],
             [
-                'name' => OrderEnum::PROCESSING,
+                'name' => OrderEnum::PACKED,
                 'system_reserve' => 1,
                 'sequence' => '2'
             ],
             [
-                'name' => OrderEnum::CANCELLED,
+                'name' => OrderEnum::OUT_FOR_DELIVERY,
                 'system_reserve' => 1,
                 'sequence' => '3'
             ],
             [
-                'name' => OrderEnum::SHIPPED,
+                'name' => OrderEnum::DELIVERED,
                 'system_reserve' => 1,
                 'sequence' => '4'
             ],
             [
-                'name' => OrderEnum::OUT_FOR_DELIVERY,
+                'name' => OrderEnum::RETURNED,
                 'system_reserve' => 1,
                 'sequence' => '5'
             ],
             [
-                'name' => OrderEnum::DELIVERED,
+                'name' => OrderEnum::CANCELLED,
                 'system_reserve' => 1,
                 'sequence' => '6'
+            ],
+            [
+                'name' => OrderEnum::PROCESSING,
+                'system_reserve' => 1,
+                'sequence' => '7'
+            ],
+            [
+                'name' => OrderEnum::SHIPPED,
+                'system_reserve' => 1,
+                'sequence' => '8'
             ]
         ];
 
         foreach ($orderStatus as $status) {
-            if (!OrderStatus::where('name', $status['name'])->first()) {
+            $existingStatus = OrderStatus::where('name', $status['name'])->first();
+            if (!$existingStatus) {
                 OrderStatus::create([
                     'name' => $status['name'],
                     'system_reserve' =>  $status['system_reserve'],
                     'sequence' => $status['sequence']
                 ]);
+            } else {
+                $existingStatus->update(['sequence' => $status['sequence']]);
             }
         }
 

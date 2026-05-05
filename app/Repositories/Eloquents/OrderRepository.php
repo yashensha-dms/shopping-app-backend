@@ -277,6 +277,11 @@ class OrderRepository extends BaseRepository
                     $request['payment_status'] = PaymentStatus::COMPLETED;
                 } else if ($order_status == OrderEnum::CANCELLED && $order->payment_status == PaymentStatus::PENDING) {
                     $request['payment_status'] = PaymentStatus::CANCELLED;
+                } else if ($order_status == OrderEnum::RETURNED) {
+                    $request['payment_status'] = PaymentStatus::FAILED;
+                    if ($order->order_status_id != $request['order_status_id']) {
+                        Helpers::restockProductStock($order);
+                    }
                 }
             }
 

@@ -9,4 +9,6 @@ enum OrderEnum:string {
   const SHIPPED = 'shipped';
   const OUT_FOR_DELIVERY = 'out for delivery';
   const DELIVERED = 'delivered';
+  const PACKED = 'packed';
+  const RETURNED = 'returned';
 }
