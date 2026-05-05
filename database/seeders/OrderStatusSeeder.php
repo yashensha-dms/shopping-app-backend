@@ -59,6 +59,12 @@ class OrderStatusSeeder extends Seeder
             ]
         ];
 
+        // Temporarily shift existing sequences to avoid unique constraint violations
+        $existingStatuses = OrderStatus::all();
+        foreach ($existingStatuses as $status) {
+            $status->update(['sequence' => $status->sequence + 100]);
+        }
+
         foreach ($orderStatus as $status) {
             $existingStatus = OrderStatus::where('name', $status['name'])->first();
             if (!$existingStatus) {
