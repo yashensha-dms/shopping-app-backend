@@ -85,7 +85,7 @@ trait UtilityTrait
   {
     $outOfStockProducts = [];
     foreach ($products as $product) {
-      if (isset($product['variation_id'])) {
+      if (isset($product['variation_id']) && !empty($product['variation_id'])) {
         $variationStock = Helpers::getVariationStock($product['variation_id']);
         if (!isset($variationStock)) {
           $outOfStockProducts[] = [

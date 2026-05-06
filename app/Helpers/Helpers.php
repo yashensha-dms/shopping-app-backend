@@ -267,7 +267,7 @@ class Helpers
 
   public static function getPrice($product)
   {
-    if (isset($product['variation_id'])) {
+    if (isset($product['variation_id']) && !empty($product['variation_id'])) {
       return self::getVariationPrice($product['variation_id']);
     }
 
@@ -551,7 +551,7 @@ class Helpers
       $order->payment_method == PaymentMethod::COD) {
       foreach ($order->products as $product) {
         $product = $product->pivot;
-        if (isset($product->variation_id)) {
+        if (isset($product->variation_id) && !empty($product->variation_id)) {
           self::decrementVariationQuantity($product->variation_id, $product->quantity);
         } else {
           self::decrementProductQuantity($product->product_id, $product->quantity);
@@ -564,7 +564,7 @@ class Helpers
   {
     foreach ($order->products as $product) {
       $product = $product->pivot;
-      if (isset($product->variation_id)) {
+      if (isset($product->variation_id) && !empty($product->variation_id)) {
         self::incrementVariationQuantity($product->variation_id, $product->quantity);
       } else {
         self::incrementProductQuantity($product->product_id, $product->quantity);
