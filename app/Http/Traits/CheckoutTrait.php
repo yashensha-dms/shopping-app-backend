@@ -133,7 +133,7 @@ trait CheckoutTrait
         $perProductCost[] = [
           'store_id'  =>      Helpers::getStoreIdByProductId($product['product_id']),
           'product_id' =>     $product['product_id'],
-          'variation_id' =>   $product['variation_id'],
+          'variation_id' =>   $product['variation_id'] ?? null,
           'tax' =>            $perProductTax,
           'shipping_cost' =>  $perProductShippingCost,
           'single_price' =>   $singleProductPrice,

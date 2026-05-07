@@ -160,7 +160,7 @@ class CartRepository extends BaseRepository
             } else  {
                 $cart = $this->model->create([
                     'product_id' => $request['product_id'],
-                    'variation_id' => $request['variation_id'],
+                    'variation_id' => $request['variation_id'] ?? null,
                     'quantity' => $request['quantity'],
                     'sub_total' => Helpers::formatDecimal($subTotal)
                 ]);
@@ -181,7 +181,7 @@ class CartRepository extends BaseRepository
     {
         return $this->model->where([
             ['product_id', $product['product_id']],
-            ['variation_id', $product['variation_id']],
+            ['variation_id', $product['variation_id'] ?? null],
             ['consumer_id', Helpers::getCurrentUserId()]
         ])->first();
     }

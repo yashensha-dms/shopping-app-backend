@@ -275,7 +275,7 @@ class OrderRepository extends BaseRepository
                 $order_status = $this->orderStatus->where('id', $request['order_status_id'])->pluck('name')->first();
                 if ($order_status == OrderEnum::DELIVERED && $order->payment_method == PaymentMethod::COD) {
                     $request['payment_status'] = PaymentStatus::COMPLETED;
-                } else if ($order_status == OrderEnum::CANCELLED && $order->payment_status == PaymentStatus::PENDING) {
+                } else if ($order_status == OrderEnum::CANCELLED) {
                     $request['payment_status'] = PaymentStatus::CANCELLED;
                 } else if ($order_status == OrderEnum::RETURNED) {
                     $request['payment_status'] = PaymentStatus::FAILED;

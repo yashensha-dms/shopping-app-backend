@@ -14,7 +14,7 @@ trait UtilityTrait
   public function getUniqueProducts($products)
   {
     return collect($products)->unique(function ($product) {
-      return $product['product_id'] . '-' . $product['variation_id'];
+      return $product['product_id'] . '-' . ($product['variation_id'] ?? '');
     })->values()->toArray();
   }
 
