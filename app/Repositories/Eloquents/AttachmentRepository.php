@@ -78,26 +78,41 @@ class AttachmentRepository extends BaseRepository
             $createdAttachments[] = $attachment;
         }
 
-        $files = [];
-        if ($request->hasFile('file')) {
-            $files[] = $request->file('file');
-        }
-
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $files[] = $file;
+        try {
+            $files = [];
+            if ($request->hasFile('file')) {
+                $files[] = $request->file('file');
             }
-        }
 
-        if ($user) {
+            if ($request->hasFile('attachments')) {
+                $attachments = $request->file('attachments');
+                if (is_array($attachments)) {
+                    foreach ($attachments as $file) {
+                        $files[] = $file;
+                    }
+                } else {
+                    $files[] = $attachments;
+                }
+            }
+
+            // Ensure we have a user or admin to 'own' the media
+            $owner = Auth::guard('api')->user() ?? Helpers::getAdmin();
+            if (!$owner) {
+                 throw new Exception('No authorized user found to process upload', 401);
+            }
+
             foreach ($files as $file) {
-                $createdAttachments[] = $user->addMedia($file)->toMediaCollection('attachment');
+                // We use the owner (user/admin) to add the media to the collection
+                $createdAttachments[] = $owner->addMedia($file)->toMediaCollection('attachment');
             }
-        } else {
-             throw new Exception('User not found for media upload', 404);
-        }
 
-        return $createdAttachments;
+            return $createdAttachments;
+
+        } catch (Exception $e) {
+            // Log the error and throw it so the frontend can see it
+            \Log::error('Media Upload Error: ' . $e->getMessage());
+            throw new ExceptionHandler($e->getMessage(), $e->getCode() ?: 500);
+        }
     }
 
     public function destroy($id)

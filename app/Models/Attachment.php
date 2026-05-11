@@ -90,6 +90,8 @@ class Attachment extends Media implements HasMedia
         'size',
         'created_by_id',
         'created_at',
+        'original_url',
+        'preview_url',
     ];
 
     public static function boot()
