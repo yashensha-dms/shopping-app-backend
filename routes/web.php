@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,5 +43,15 @@ Route::get('/clear-cache', function() {
     Artisan::call('clear-compiled');
     Artisan::call('storage:link');
 });
+
+Route::get('storage/{path}', function ($path) {
+    $path = storage_path('app/public/' . $path);
+    if (!File::exists($path)) {
+        abort(404);
+    }
+    $file = File::get($path);
+    $type = File::mimeType($path);
+    return response($file, 200)->header("Content-Type", $type);
+})->where('path', '.*');
 
 Route::get('order/invoice/{order_number}', 'App\Http\Controllers\OrderController@getInvoice')->name('invoice');
