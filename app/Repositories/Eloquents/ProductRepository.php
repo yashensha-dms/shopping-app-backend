@@ -110,7 +110,7 @@ class ProductRepository extends BaseRepository
                 'short_description' => $request->short_description,
                 'description' => $request->description,
                 'type' => $request->type,
-                'unit' => $request->unit,
+                'unit' => $request->unit ?: '1',
                 'quantity' => $request->quantity ?? $quantity,
                 'weight' => $request->weight,
                 'price' => $request->price,
@@ -187,6 +187,9 @@ class ProductRepository extends BaseRepository
 
 
             $product = $this->model->findOrFail($id);
+            if (!isset($request['unit']) || is_null($request['unit'])) {
+                $request['unit'] = $product->unit ?: '1';
+            }
             $product->update($request);
 
             if (isset($request['product_thumbnail_id'])) {
@@ -235,6 +238,7 @@ class ProductRepository extends BaseRepository
                 $product->similar_products()->sync($request['related_products']);
             }
 
+            $variationsIds = [];
             if (isset($request['variations']) && !empty($request['variations']) && $request['type'] == 'classified') {
                 foreach ($request['variations'] as $variation) {
                     $variation['sale_price'] = $variation['sale_price'] ?? $variation['price'];

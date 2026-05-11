@@ -62,6 +62,11 @@ return [
             'url'    => env('APP_URL').'/media',
         ],
 
+        'external' => [
+            'driver' => 'local',
+            'root'   => storage_path('app/public'),
+        ],
+
     ],
 
     /*

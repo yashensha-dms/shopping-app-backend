@@ -212,7 +212,7 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnE
                 'short_description' => $row['short_description'],
                 'description' => $row['description'],
                 'type' => $row['type'],
-                'unit' => $row['unit'],
+                'unit' => $row['unit'] ?: '1',
                 'quantity' => $row['quantity'] ?? $quantity,
                 'weight' => $row['weight'],
                 'price' => $price ?? $row['price'],

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\Image\Manipulations;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Attachment extends Media implements HasMedia
 {
@@ -58,12 +59,35 @@ class Attachment extends Media implements HasMedia
         'manipulations' => 'json',
     ];
 
+    protected $appends = ['original_url', 'preview_url'];
+
+    protected function originalUrl(): Attribute
+    {
+        return Attribute::get(function () {
+            if ($this->disk === 'external') {
+                return $this->custom_properties['external_url'] ?? '';
+            }
+            return $this->getUrl();
+        });
+    }
+
+    protected function previewUrl(): Attribute
+    {
+        return Attribute::get(function () {
+            if ($this->disk === 'external') {
+                return $this->custom_properties['external_url'] ?? '';
+            }
+            return $this->hasGeneratedConversion('preview') ? $this->getUrl('preview') : '';
+        });
+    }
+
     protected $visible = [
         'id',
         'name',
         'file_name',
         'disk',
-        'original_url',
+        'mime_type',
+        'size',
         'created_by_id',
         'created_at',
     ];
@@ -72,7 +96,7 @@ class Attachment extends Media implements HasMedia
     {
         parent::boot();
         static::saving(function ($model) {
-            $model->created_by_id = Helpers::getCurrentUserId() ?? Helpers::getAdmin()->id;
+            $model->created_by_id = Helpers::getCurrentUserId() ?? Helpers::getAdmin()?->id;
         });
     }
 
