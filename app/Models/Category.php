@@ -38,8 +38,8 @@ class Category extends Model implements HasMedia
     ];
 
     protected $with = [
-        'category_image:id,name,disk,file_name',
-        'category_icon:id,name,disk,file_name'
+        'category_image:id,name,disk,file_name,custom_properties',
+        'category_icon:id,name,disk,file_name,custom_properties'
     ];
 
     protected $withCount = [

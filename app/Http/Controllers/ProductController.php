@@ -330,8 +330,8 @@ class ProductController extends Controller
 
         return $product->with([
             'store:id,store_name',
-            'product_thumbnail:id,name,disk,file_name',
-            'product_galleries:id,name,disk,file_name',
+            'product_thumbnail:id,name,disk,file_name,custom_properties',
+            'product_galleries:id,name,disk,file_name,custom_properties',
             'attributes',
             'variations'
         ]);
