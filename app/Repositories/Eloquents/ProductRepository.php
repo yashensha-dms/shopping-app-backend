@@ -399,12 +399,15 @@ class ProductRepository extends BaseRepository
 
     public function getVariationSKU($sku)
     {
+        if (!Variation::where("sku", $sku)->exists()) {
+            return $sku;
+        }
+
+        $originalSku = $sku;
         $i = 1;
-        do {
-
-            $sku = $sku.str_repeat(' (COPY)', $i++);
-
-        } while ($this->model->variations()->where("sku", $sku)->exists());
+        while (Variation::where("sku", $sku)->exists()) {
+            $sku = $originalSku . ' (COPY ' . $i++ . ')';
+        }
 
         return $sku;
     }

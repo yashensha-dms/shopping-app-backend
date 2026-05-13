@@ -31,6 +31,7 @@ class CreateAttachmentRequest extends FormRequest
             'attachments' => ['nullable','array'],
             'attachments.*'  => ['image','mimes:jpeg,jpg,png,gif,svg,webp','max:10240'],
             'url' => ['nullable', 'url'],
+            'name' => ['nullable', 'string'],
         ];
     }
 

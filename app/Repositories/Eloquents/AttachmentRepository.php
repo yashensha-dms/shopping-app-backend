@@ -63,7 +63,7 @@ class AttachmentRepository extends BaseRepository
 
             $attachment = $this->model->create([
                 'uuid' => (string) Str::uuid(),
-                'name' => $slugName,
+                'name' => $request->name ?? $slugName,
                 'file_name' => $fileName,
                 'disk' => 'external',
                 'collection_name' => 'attachment',
@@ -103,7 +103,9 @@ class AttachmentRepository extends BaseRepository
 
             foreach ($files as $file) {
                 // We use the owner (user/admin) to add the media to the collection
-                $createdAttachments[] = $owner->addMedia($file)->toMediaCollection('attachment');
+                $createdAttachments[] = $owner->addMedia($file)
+                    ->usingName($request->name ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
+                    ->toMediaCollection('attachment');
             }
 
             return $createdAttachments;
