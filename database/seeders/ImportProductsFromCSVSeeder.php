@@ -30,6 +30,18 @@ class ImportProductsFromCSVSeeder extends Seeder
 
         echo "Starting Full Product Import from CSV...\n";
         
+        $store = \App\Models\Store::first();
+        if (!$store) {
+            $store = \App\Models\Store::create([
+                'name' => 'Main Store',
+                'slug' => 'main-store',
+                'status' => 1,
+            ]);
+        }
+        $storeId = $store->id;
+
+        $adminId = \App\Models\User::role('admin')->first()?->id ?? 1;
+
         $count = 0;
         while (($row = fgetcsv($file)) !== false) {
             $name = $row[$map['Name']] ?? null;
@@ -57,19 +69,27 @@ class ImportProductsFromCSVSeeder extends Seeder
             $imageUrl = $row[$map['STC']] ?? null;
             $attachmentId = null;
             if ($imageUrl) {
-                $attachmentId = DB::table('attachments')->insertGetId([
-                    'name' => $name,
-                    'file_name' => Str::slug($name) . '.png',
-                    'mime_type' => 'image/png',
-                    'disk' => 'external',
-                    'collection_name' => 'attachment',
-                    'size' => 0,
-                    'custom_properties' => json_encode(['external_url' => $imageUrl]),
-                    'model_type' => 'App\Models\Product',
-                    'created_by_id' => 1,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
+                $existingAttachment = DB::table('attachments')
+                    ->where('custom_properties', 'like', '%' . $imageUrl . '%')
+                    ->first();
+
+                if (!$existingAttachment) {
+                    $attachmentId = DB::table('attachments')->insertGetId([
+                        'name' => $name,
+                        'file_name' => Str::slug($name) . '.png',
+                        'mime_type' => 'image/png',
+                        'disk' => 'external',
+                        'collection_name' => 'attachment',
+                        'size' => 0,
+                        'custom_properties' => json_encode(['external_url' => $imageUrl]),
+                        'model_type' => 'App\Models\Product',
+                        'created_by_id' => $adminId,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                } else {
+                    $attachmentId = $existingAttachment->id;
+                }
             }
 
             // 3. Create/Update Product
@@ -88,7 +108,8 @@ class ImportProductsFromCSVSeeder extends Seeder
                     'product_thumbnail_id' => $attachmentId,
                     'status' => 1,
                     'is_approved' => 1,
-                    'store_id' => 1,
+                    'store_id' => $storeId,
+                    'created_by_id' => $adminId,
                     'sku' => $row[$map['Product ID']] ?? Str::random(10),
                 ]
             );
