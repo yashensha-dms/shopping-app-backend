@@ -155,6 +155,14 @@ class ProductRepository extends BaseRepository
                     $this->createProductVariation($product, $variation);
                 }
 
+                $minPrice = min(array_column($request['variations'], 'price'));
+                $minSalePrice = min(array_column($request['variations'], 'sale_price'));
+
+                $product->update([
+                    'price' => $minPrice,
+                    'sale_price' => $minSalePrice ?? $minPrice
+                ]);
+
                 $product->variations;
             }
 
@@ -264,8 +272,16 @@ class ProductRepository extends BaseRepository
                 }
 
                 $product->variations()->whereNotIn('id', $variationsIds)->delete();
-                $product->variations;
+
+                $minPrice = $product->variations()->min('price');
+                $minSalePrice = $product->variations()->min('sale_price');
+
+                $product->update([
+                    'price' => $minPrice,
+                    'sale_price' => $minSalePrice ?? $minPrice
+                ]);
             }
+            $product->variations;
 
             $product->tax;
             DB::commit();
