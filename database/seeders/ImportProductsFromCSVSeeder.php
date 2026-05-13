@@ -30,17 +30,20 @@ class ImportProductsFromCSVSeeder extends Seeder
 
         echo "Starting Full Product Import from CSV...\n";
         
+        $adminId = \App\Models\User::role('admin')->first()?->id ?? 1;
+
         $store = \App\Models\Store::first();
         if (!$store) {
+            $vendorId = \App\Models\User::role('vendor')->first()?->id ?? $adminId;
             $store = \App\Models\Store::create([
-                'name' => 'Main Store',
+                'store_name' => 'Main Store',
                 'slug' => 'main-store',
                 'status' => 1,
+                'is_approved' => 1,
+                'vendor_id' => $vendorId,
             ]);
         }
         $storeId = $store->id;
-
-        $adminId = \App\Models\User::role('admin')->first()?->id ?? 1;
 
         $count = 0;
         while (($row = fgetcsv($file)) !== false) {
