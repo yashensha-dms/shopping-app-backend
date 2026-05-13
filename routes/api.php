@@ -36,13 +36,10 @@ Route::post('/instamojo/webhook', 'App\Http\Controllers\WebhookController@instam
 Route::post('/ccavenue/webhook', 'App\Http\Controllers\WebhookController@ccavenue')->name('ccavenue.webhook');
 
 // Authentication
-Route::post('login', [AuthController::class, 'login'])
-    ->middleware('throttle:login');
-Route::post('backend/login', [AuthController::class, 'backendLogin'])
-    ->middleware('throttle:login');
+Route::post('login', [AuthController::class, 'login']);
+Route::post('backend/login', [AuthController::class, 'backendLogin']);
 Route::post('/register', 'App\Http\Controllers\AuthController@register');
-Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
-    ->middleware('throttle:forgot-password');
+Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-token', 'App\Http\Controllers\AuthController@verifyToken');
 Route::post('/update-password', 'App\Http\Controllers\AuthController@updatePassword');
 

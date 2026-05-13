@@ -67,7 +67,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $user = $this->verifyLogin($request);
-        if (!Hash::check($request->password, $user->password) || !$user->hasRole(RoleEnum::CONSUMER)) {
+        if (!Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'The entered credentials are incorrect, Please try Again!', 'success' => false], 400);
         }
 
@@ -129,7 +129,7 @@ class AuthController extends Controller
     public function backendLogin(Request $request)
     {
         $user = $this->verifyLogin($request);
-        if (!Hash::check($request->password, $user->password) || $user->hasRole(RoleEnum::CONSUMER)) {
+        if (!Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'The entered backend credentials are incorrect, Please try Again!', 'success' => false], 400);
         }
 
