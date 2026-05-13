@@ -32,7 +32,7 @@ class CreateProductRequest extends FormRequest
             'cost'                  => ['nullable', 'numeric'],
             'store_id'              => ['nullable','exists:stores,id,deleted_at,NULL'],
             'type'                  => ['nullable','in:simple,classified'],
-            'price'                 => ['required', 'numeric'],
+            'price'                 => ['required_if:type,==,simple', 'nullable', 'numeric'],
             'categories'            => ['nullable','array','exists:categories,id,deleted_at,NULL'],
             'tags'                  => ['nullable','array','exists:tags,id,deleted_at,NULL'],
             'stock_status'          => ['nullable', 'in:in_stock,out_of_stock'],

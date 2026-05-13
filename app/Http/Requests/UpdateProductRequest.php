@@ -51,7 +51,7 @@ class UpdateProductRequest extends FormRequest
             'stock_status'          => ['nullable', 'in:in_stock,out_of_stock'],
             'sku'                   => ['nullable', "unique:products,sku,{$id},id,deleted_at,NULL"],
             'quantity'              => ['nullable', 'integer'],
-            'price'                 => ['required', 'numeric'],
+            'price'                 => ['required_if:type,==,simple', 'nullable', 'numeric'],
             'categories'            => ['nullable', 'exists:categories,id,deleted_at,NULL'],
             'tags'                  => ['nullable', 'exists:tags,id,deleted_at,NULL'],
             'tax_id'                => ['nullable', 'exists:taxes,id,deleted_at,NULL'],
