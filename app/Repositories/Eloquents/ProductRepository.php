@@ -232,7 +232,7 @@ class ProductRepository extends BaseRepository
                 $product->cross_products;
             }
 
-            if ($request['is_random_related_products']) {
+            if ($request['is_random_related_products'] && !empty($request['categories'])) {
                 $rand_category_id = $request['categories'][array_rand($request['categories'])];
                 $request['related_products'] = Helpers::getRelatedProductId($product, $rand_category_id, $product->id);
                 $product->similar_products()->sync($request['related_products']);
@@ -413,7 +413,7 @@ class ProductRepository extends BaseRepository
     {
         $related_product_ids = null;
         if (!is_null($request->related_products) && $request->is_random_related_products) {
-            if (isset($request->categories) && is_array($request->categories)) {
+            if (isset($request->categories) && is_array($request->categories) && !empty($request->categories)) {
                 $rand_category_id = $request->categories[array_rand($request->categories)];
                 $related_product_ids = Helpers::getRelatedProductId($this->model, $rand_category_id);
                 $product->similar_products()->attach($related_product_ids);
