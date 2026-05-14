@@ -73,6 +73,7 @@ class Product extends Model implements HasMedia
         'hsn_code',
         'barcode',
         'cost',
+        'default_variation_id',
         'created_by_id'
     ];
 
@@ -84,6 +85,7 @@ class Product extends Model implements HasMedia
         'attributes',
         'categories:id,name,slug,type,status',
         'tags:id,name,slug,status',
+        'default_variation'
     ];
 
     protected $withCount = [
@@ -142,6 +144,7 @@ class Product extends Model implements HasMedia
         'encourage_order' => 'integer',
         'encourage_view' => 'integer',
         'cost' => 'float',
+        'default_variation_id' => 'integer',
         'cross_sell_products' => 'array'
     ];
 
@@ -249,6 +252,14 @@ class Product extends Model implements HasMedia
     public function variations(): HasMany
     {
         return $this->hasMany(Variation::class, 'product_id');
+    }
+
+    /**
+     * @return BelongsTo
+     */
+    public function default_variation(): BelongsTo
+    {
+        return $this->belongsTo(Variation::class, 'default_variation_id');
     }
 
     /**

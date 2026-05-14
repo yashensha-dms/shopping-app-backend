@@ -77,6 +77,8 @@ class UpdateProductRequest extends FormRequest
             'related_products' => ['nullable','exists:products,id,deleted_at,NULL'],
             'cross_sell_products' => ['nullable', 'exists:products,id,deleted_at,NULL'],
             'visible_time' => ['nullable','date'],
+            'default_variation_id' => ['nullable', 'exists:variations,id,deleted_at,NULL'],
+            'default_variation_index' => ['nullable', 'integer'],
             'variations.*.id' => ['nullable','exists:variations,id,deleted_at,NULL'],
             'variations.*.name' => ['nullable','required_if:type,==,classified','string'],
             'variations.*.price' => ['nullable','required_if:type,==,classified','numeric'],

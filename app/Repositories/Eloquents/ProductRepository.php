@@ -146,22 +146,30 @@ class ProductRepository extends BaseRepository
                 'status' => $request->status,
                 'is_approved' => $isAutoApprove ?? true,
                 'cost' => $request->cost,
+                'default_variation_id' => $request->default_variation_id,
                 'store_id' => $request->store_id,
             ]);
 
             $this->relationProductModels($request, $product);
             if (isset($request['variations']) && !empty($request['variations']) && $request->type == 'classified'){
+                $variations = [];
                 foreach ($request['variations'] as $variation) {
-                    $this->createProductVariation($product, $variation);
+                    $variations[] = $this->createProductVariation($product, $variation);
                 }
 
                 $minPrice = min(array_column($request['variations'], 'price'));
                 $minSalePrice = min(array_column($request['variations'], 'sale_price'));
 
-                $product->update([
+                $updateData = [
                     'price' => $minPrice,
                     'sale_price' => $minSalePrice ?? $minPrice
-                ]);
+                ];
+
+                if (isset($request['default_variation_index']) && isset($variations[$request['default_variation_index']])) {
+                    $updateData['default_variation_id'] = $variations[$request['default_variation_index']]->id;
+                }
+
+                $product->update($updateData);
 
                 $product->variations;
             }
@@ -276,10 +284,16 @@ class ProductRepository extends BaseRepository
                 $minPrice = $product->variations()->min('price');
                 $minSalePrice = $product->variations()->min('sale_price');
 
-                $product->update([
+                $updateData = [
                     'price' => $minPrice,
                     'sale_price' => $minSalePrice ?? $minPrice
-                ]);
+                ];
+
+                if (isset($request['default_variation_index']) && isset($variationsIds[$request['default_variation_index']])) {
+                    $updateData['default_variation_id'] = $variationsIds[$request['default_variation_index']];
+                }
+
+                $product->update($updateData);
             }
             $product->variations;
 
@@ -499,6 +513,7 @@ class ProductRepository extends BaseRepository
             ]);
 
             $variationData->attribute_values()->attach($variation['attribute_values']);
+            return $variationData;
         }
     }
 

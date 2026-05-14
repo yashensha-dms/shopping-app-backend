@@ -65,6 +65,8 @@ class CreateProductRequest extends FormRequest
             'cross_sell_products' => ['nullable','exists:products,id,deleted_at,NULL'],
             'related_products' => ['nullable','exists:products,id,deleted_at,NULL'],
             'visible_time' => ['nullable','date'],
+            'default_variation_id' => ['nullable', 'exists:variations,id,deleted_at,NULL'],
+            'default_variation_index' => ['nullable', 'integer'],
             'variations.*.name' => ['required_if:type,==,classified', 'string'],
             'variations.*.price' => ['required_if:type,==,classified', 'numeric'],
             'variations.*.cost' => ['nullable', 'numeric'],
