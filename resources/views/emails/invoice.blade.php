@@ -5,7 +5,7 @@
 </head>
 <style type="text/css">
     body{
-        font-family: 'Roboto Condensed', sans-serif;
+        font-family: 'DejaVu Sans', 'Roboto Condensed', sans-serif;
     }
     .m-0{
         margin: 0px;
