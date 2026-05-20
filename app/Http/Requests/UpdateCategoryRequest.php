@@ -54,6 +54,17 @@ class UpdateCategoryRequest extends FormRequest
 
     public function failedValidation(Validator $validator)
     {
-        throw new ExceptionHandler($validator->errors()->first(), 422);
+        $category = $this->route('category');
+        $id = $category instanceof \App\Models\Category ? $category->id : $category;
+        $id = $id ?: $this->id;
+        $debug = [
+            'error' => $validator->errors()->first(),
+            'resolved_id' => $id,
+            'route_category' => is_object($category) ? get_class($category) . '#' . $category->id : $category,
+            'request_id' => $this->id,
+            'request_name' => $this->name,
+            'request_type' => $this->type,
+        ];
+        throw new ExceptionHandler(json_encode($debug), 422);
     }
 }
