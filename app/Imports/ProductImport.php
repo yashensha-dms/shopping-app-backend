@@ -52,6 +52,11 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnE
         if (!isset($data['sale_price']) && isset($data['price'])) {
             $data['sale_price'] = $data['price'];
         }
+
+        // Calculate absolute discount amount (mrp - selling_price)
+        $mrp = isset($data['price']) ? floatval($data['price']) : 0;
+        $selling = isset($data['sale_price']) ? floatval($data['sale_price']) : 0;
+        $data['discount'] = max(0, $mrp - $selling);
         if (!isset($data['hsn_code']) && isset($data['hsn_code'])) {
             // Already set or same name
         }
@@ -112,7 +117,7 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnE
             'stock_status' => ['required_if:type,==,simple', 'in:in_stock,out_of_stock'],
             'quantity' => ['numeric','required_if:type,==,simple'],
             'sku' => ['required_if:type,==,simple', 'unique:products,sku,NULL,id,deleted_at,NULL'],
-            'discount' => ['nullable','numeric','regex:/^([0-9]{1,2}){1}(\.[0-9]{1,2})?$/'],
+            'discount' => ['nullable','numeric'],
             'show_stock_quantity' => ['min:0', 'max:1'],
             'is_featured' => ['min:0', 'max:1'],
             'secure_checkout' => ['min:0', 'max:1'],
@@ -281,7 +286,7 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnE
                 }
             }
 
-            if (isset($row['discount']) && !is_null($row['discount'])) {
+            if (isset($row['discount']) && !is_null($row['discount']) && !isset($row['sale_price'])) {
                 $mrpPrice = $row['price'] ?? $price;
                 $sale_price = round($mrpPrice - (($mrpPrice * $row['discount'])/100), 2);
             }
