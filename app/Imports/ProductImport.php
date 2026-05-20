@@ -25,6 +25,21 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnE
     * @return \Illuminate\Database\Eloquent\Model|null
     */
 
+    private function formatScientific($value)
+    {
+        if (is_null($value)) {
+            return null;
+        }
+        $value = trim((string)$value);
+        if (str_starts_with($value, "'")) {
+            $value = substr($value, 1);
+        }
+        if (preg_match('/^[+-]?\d+(\.\d+)?[eE][+-]?\d+$/', $value)) {
+            return sprintf('%.0f', (float)$value);
+        }
+        return $value;
+    }
+
     public function prepareForValidation($data, $index)
     {
         // Normalize user-friendly keys to standard database keys
@@ -39,6 +54,17 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnE
         }
         if (!isset($data['hsn_code']) && isset($data['hsn_code'])) {
             // Already set or same name
+        }
+
+        // Format scientific notation to plain strings
+        if (isset($data['barcode'])) {
+            $data['barcode'] = $this->formatScientific($data['barcode']);
+        }
+        if (isset($data['hsn_code'])) {
+            $data['hsn_code'] = $this->formatScientific($data['hsn_code']);
+        }
+        if (isset($data['sku'])) {
+            $data['sku'] = $this->formatScientific($data['sku']);
         }
 
         // Supply defaults for required validation fields if missing
