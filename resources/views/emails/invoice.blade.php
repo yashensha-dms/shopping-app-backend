@@ -131,11 +131,11 @@
         <tr align="center">
             <td>{{++$no}}</td>
             <td>{{$product->name}}</td>
-            <td>$ {{$product->pivot->single_price}}</td>
+            <td>₹ {{$product->pivot->single_price}}</td>
             <td>{{$product->pivot->quantity}}</td>
-            <td>$ {{$product->pivot->subtotal}}</td>
-            <td>$ {{$product->pivot->shipping_cost}}</td>
-            <td>$ {{$product->pivot->subtotal + $product->pivot->shipping_cost + $product->pivot->tax}}</td>
+            <td>₹ {{$product->pivot->subtotal}}</td>
+            <td>₹ {{$product->pivot->shipping_cost}}</td>
+            <td>₹ {{$product->pivot->subtotal + $product->pivot->shipping_cost + $product->pivot->tax}}</td>
         </tr>
         @endforeach
         <tr>
@@ -148,10 +148,10 @@
                         <p>Total Payable</p>
                     </div>
                     <div class="total-right w-15 float-left text-bold" align="right">
-                        <p>${{$orders->amount}}</p>
-                        <p>${{$orders->tax_total}}</p>
-                        <p>${{$orders->shipping_total}}</p>
-                        <p>${{$orders->total}}</p>
+                        <p>₹ {{$orders->amount}}</p>
+                        <p>₹ {{$orders->tax_total}}</p>
+                        <p>₹ {{$orders->shipping_total}}</p>
+                        <p>₹ {{$orders->total}}</p>
                     </div>
                     <div style="clear: both;"></div>
                 </div>
