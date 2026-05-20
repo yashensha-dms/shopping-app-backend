@@ -26,7 +26,9 @@ class UpdateCategoryRequest extends FormRequest
      */
     public function rules()
     {
-        $id = $this->route('category') ? $this->route('category')->id : $this->id;
+        $category = $this->route('category');
+        $id = $category instanceof \App\Models\Category ? $category->id : $category;
+        $id = $id ?: $this->id;
         if ($id == $this->parent_id) {
             throw new ExceptionHandler("Can't insert same category for parent", 400);
         }
