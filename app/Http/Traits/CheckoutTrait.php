@@ -173,7 +173,7 @@ trait CheckoutTrait
           'tax_total' => $this->formatDecimal(array_sum($_tax_total)),
           'shipping_total' => $this->formatDecimal(array_sum($_shipping_total)),
           'sub_total' => $this->formatDecimal(array_sum($_total)),
-          'total' => $this->formatDecimal(array_sum($_tax_total) + array_sum($_shipping_total) + array_sum($_total)),
+          'total' => $this->formatDecimal(array_sum($_shipping_total) + array_sum($_total)),
           'convert_point_amount' => $this->formatDecimal($convert_wallet_balance),
           'convert_wallet_balance' => $this->formatDecimal($convert_point_amount),
           'coupon_total_discount' => $this->formatDecimal(array_sum($couponTotalDiscount)),
@@ -247,7 +247,7 @@ trait CheckoutTrait
         }
       }
 
-      $total +=  array_sum($tax) + $shippingTotal;
+      $total +=  $shippingTotal;
       $itemTotal = [
         'tax_total' => $this->formatDecimal(array_sum($tax)),
         'shipping_total' => $this->formatDecimal($shippingTotal),
@@ -276,7 +276,7 @@ trait CheckoutTrait
     $tax_id = $this->getTaxId($product_id);
     $taxRate = $this->getTaxRate($tax_id);
     if ($taxRate) {
-      $tax = ($subtotal * $taxRate) / 100;
+      $tax = ($subtotal * $taxRate) / (100 + $taxRate);
     }
 
     return  $tax;
