@@ -369,89 +369,107 @@ class RoleSeeder extends Seeder
         }
 
         $request = app('request')->all();
-        $adminRole = Role::create([
-            'name' => RoleEnum::ADMIN,
+        $adminRole = Role::firstOrCreate([
+            'name' => RoleEnum::ADMIN
+        ], [
             'system_reserve' => true
         ]);
 
         $adminRole->givePermissionTo(Permission::all());
-        if (isset($request['admin']) && Request::route()?->getName() == 'install.database.config') {
-            $admin = User::factory()->create([
-                'name' => $request['admin']['first_name'].''.$request['admin']['last_name'] ?? RoleEnum::ADMIN,
-                'email' => $request['admin']['email'] ?? 'admin@example.com',
-                'password' => $request['admin']['password'] ?? Hash::make('123456789'),
-                'country_code' => (string) '1',
-                'phone' => '9876502501',
-                'system_reserve' => true,
-            ]);
-        } else {
-            $admin = User::factory()->create([
-                'name' => RoleEnum::ADMIN,
-                'email' => 'admin@example.com',
-                'password' => Hash::make('123456789'),
-                'country_code' => (string) '1',
-                'phone' => '9876502501',
-                'system_reserve' => true,
-            ]);
+        
+        $adminEmail = isset($request['admin']['email']) ? $request['admin']['email'] : 'admin@example.com';
+        $admin = User::where('email', $adminEmail)->first();
+        if (!$admin) {
+            if (isset($request['admin']) && Request::route()?->getName() == 'install.database.config') {
+                $admin = User::factory()->create([
+                    'name' => $request['admin']['first_name'].''.$request['admin']['last_name'] ?? RoleEnum::ADMIN,
+                    'email' => $adminEmail,
+                    'password' => $request['admin']['password'] ?? Hash::make('123456789'),
+                    'country_code' => (string) '1',
+                    'phone' => '9876502501',
+                    'system_reserve' => true,
+                ]);
+            } else {
+                $admin = User::factory()->create([
+                    'name' => RoleEnum::ADMIN,
+                    'email' => 'admin@example.com',
+                    'password' => Hash::make('123456789'),
+                    'country_code' => (string) '1',
+                    'phone' => '9876502501',
+                    'system_reserve' => true,
+                ]);
+            }
         }
 
         $admin->assignRole($adminRole);
-        $consumerRole = Role::create([
-            'name' => RoleEnum::CONSUMER,
+        $consumerRole = Role::firstOrCreate([
+            'name' => RoleEnum::CONSUMER
+        ], [
             'system_reserve' => true
         ]);
 
         $consumerRole->givePermissionTo($consumerPermissions);
-        $consumer = User::factory()->create([
-            'name' => 'john due',
-            'email' => 'john.customer@example.com',
-            'password' => Hash::make('123456789'),
-            'country_code' => (string) '1',
-            'phone' => '78945622',
-            'system_reserve' => false,
-        ]);
+        
+        $consumer = User::where('email', 'john.customer@example.com')->first();
+        if (!$consumer) {
+            $consumer = User::factory()->create([
+                'name' => 'john due',
+                'email' => 'john.customer@example.com',
+                'password' => Hash::make('123456789'),
+                'country_code' => (string) '1',
+                'phone' => '78945622',
+                'system_reserve' => false,
+            ]);
+            $consumer->wallet()->create();
+        }
         $consumer->assignRole($consumerRole);
-        $consumer->wallet()->create();
 
-        $vendorRole = Role::create([
-            'name' => RoleEnum::VENDOR,
+        $vendorRole = Role::firstOrCreate([
+            'name' => RoleEnum::VENDOR
+        ], [
             'system_reserve' => true
         ]);
 
-        $vendor = User::factory()->create([
-            'name' => 'john dock',
-            'email' => 'john.store@example.com',
-            'password' => Hash::make('123456789'),
-            'country_code' => (string) '1',
-            'phone' => '764236512',
-            'system_reserve' => false,
-        ]);
+        $vendor = User::where('email', 'john.store@example.com')->first();
+        if (!$vendor) {
+            $vendor = User::factory()->create([
+                'name' => 'john dock',
+                'email' => 'john.store@example.com',
+                'password' => Hash::make('123456789'),
+                'country_code' => (string) '1',
+                'phone' => '764236512',
+                'system_reserve' => false,
+            ]);
+        }
 
         $vendorRole->givePermissionTo($vendorPermissions);
         $vendor->assignRole($vendorRole);
-        $store = Store::create([
-            'store_name' => 'Fruits Market',
-            'description' => 'Welcome to Fruits Market, your gateway to a world of natural sweetness and vibrant flavors. At FruitE, we celebrate the beauty and goodness of fruits in their purest form',
-            'country_id' => 840,
-            'state_id' => 3757,
-            'city' => 'San Jose',
-            'address' => '4105 Park Street',
-            'pincode' => '95110',
-            'facebook' => "https://www.facebook.com/",
-            'twitter' => "https://twitter.com/",
-            'instagram'=> 'https://www.instagram.com/',
-            'youtube'=> null,
-            'pinterest'=> null,
-            'store_logo_id'=> null,
-            'store_cover_id'=> null,
-            'hide_vendor_email' => 1,
-            'hide_vendor_phone' => 1,
-            'vendor_id' => $vendor->id,
-            'status' => 1,
-            'is_approved' => 1,
-        ]);
-
-        $store->vendor->vendor_wallet()->create();
+        
+        $store = Store::where('vendor_id', $vendor->id)->first();
+        if (!$store) {
+            $store = Store::create([
+                'store_name' => 'Fruits Market',
+                'description' => 'Welcome to Fruits Market, your gateway to a world of natural sweetness and vibrant flavors. At FruitE, we celebrate the beauty and goodness of fruits in their purest form',
+                'country_id' => 840,
+                'state_id' => 3757,
+                'city' => 'San Jose',
+                'address' => '4105 Park Street',
+                'pincode' => '95110',
+                'facebook' => "https://www.facebook.com/",
+                'twitter' => "https://twitter.com/",
+                'instagram'=> 'https://www.instagram.com/',
+                'youtube'=> null,
+                'pinterest'=> null,
+                'store_logo_id'=> null,
+                'store_cover_id'=> null,
+                'hide_vendor_email' => 1,
+                'hide_vendor_phone' => 1,
+                'vendor_id' => $vendor->id,
+                'status' => 1,
+                'is_approved' => 1,
+            ]);
+            $store->vendor->vendor_wallet()->create();
+        }
         DB::table('seeders')->updateOrInsert([
             'name' => 'RoleSeeder',
             'is_completed' => true
