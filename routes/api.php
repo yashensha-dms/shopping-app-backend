@@ -107,6 +107,11 @@ Route::apiResource('tax', 'App\Http\Controllers\TaxController', [
   'only' => ['index', 'show'],
 ]);
 
+// Offer Banners
+Route::apiResource('offer-banner', 'App\Http\Controllers\OfferBannerController', [
+  'only' => ['index', 'show'],
+]);
+
 // Coupons
 Route::apiResource('coupon', 'App\Http\Controllers\CouponController', [
   'only' => ['index', 'show'],
@@ -308,6 +313,13 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
   ]);
   Route::post('tax/deleteAll', 'App\Http\Controllers\TaxController@deleteAll')->middleware('can:tax.destroy');
   Route::put('tax/{id}/{status}', 'App\Http\Controllers\TaxController@status')->middleware('can:tax.edit');
+
+  // Offer Banner
+  Route::apiResource('offer-banner', 'App\Http\Controllers\OfferBannerController',[
+    'only' => ['store', 'update', 'destroy'],
+  ]);
+  Route::post('offer-banner/deleteAll', 'App\Http\Controllers\OfferBannerController@deleteAll')->middleware('can:offer_banner.destroy');
+  Route::put('offer-banner/{id}/{status}', 'App\Http\Controllers\OfferBannerController@status')->middleware('can:offer_banner.edit');
 
   // Shipping
   Route::apiResource('shipping', 'App\Http\Controllers\ShippingController');

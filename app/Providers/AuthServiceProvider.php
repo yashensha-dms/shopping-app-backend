@@ -61,6 +61,7 @@ class AuthServiceProvider extends ServiceProvider
         Attachment::class => AttachmentPolicy::class,
         ShippingRule::class => ShippingRulePolicy::class,
         AttributeValue::class => AttributeValuePolicy::class,
+        \App\Models\OfferBanner::class => \App\Policies\OfferBannerPolicy::class,
     ];
 
     /**
