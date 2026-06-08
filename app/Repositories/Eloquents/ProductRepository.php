@@ -148,6 +148,8 @@ class ProductRepository extends BaseRepository
                 'cost' => $request->cost,
                 'default_variation_id' => $request->default_variation_id,
                 'store_id' => $request->store_id,
+                'barcode' => $request->barcode,
+                'hsn_code' => $request->hsn_code,
             ]);
 
             $this->relationProductModels($request, $product);

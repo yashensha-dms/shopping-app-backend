@@ -57,6 +57,7 @@ class UpdateProductRequest extends FormRequest
             'tax_id'                => ['nullable', 'exists:taxes,id,deleted_at,NULL'],
             'status'                => ['nullable', 'min:0', 'max:1'],
             'hsn_code'              => ['nullable', 'string', 'max:20'],
+            'barcode'               => ['nullable', 'string', 'max:100'],
             'is_featured' => ['min:0', 'max:1'],
             'is_cod' => ['min:0', 'max:1'],
             'is_return' => ['min:0', 'max:1'],

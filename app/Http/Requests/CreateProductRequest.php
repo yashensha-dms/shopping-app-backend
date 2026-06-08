@@ -62,6 +62,7 @@ class CreateProductRequest extends FormRequest
             'sale_expired_at' => ['nullable','date', 'after:sale_starts_at'],
             'status' => ['nullable','min:0','max:1'],
             'hsn_code' => ['nullable', 'string', 'max:20'],
+            'barcode'  => ['nullable', 'string', 'max:100'],
             'cross_sell_products' => ['nullable','exists:products,id,deleted_at,NULL'],
             'related_products' => ['nullable','exists:products,id,deleted_at,NULL'],
             'visible_time' => ['nullable','date'],
