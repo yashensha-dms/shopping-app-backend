@@ -399,7 +399,7 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnE
                 'quantity' => $product->quantity,
                 'weight' => $product->weight,
                 'price' => $product->price,
-                'sale_price' =>$product->price,
+                'sale_price' => $product->sale_price,
                 'discount' => $product->discount,
                 'sku' => $product->sku,
                 'is_featured' => $product->is_featured,

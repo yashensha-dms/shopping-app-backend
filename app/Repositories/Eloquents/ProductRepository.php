@@ -51,10 +51,24 @@ class ProductRepository extends BaseRepository
     {
         try {
 
-            return $this->model->with(config('enums.product.with'))
-                ->get()
-                ->makeVisible(config('enums.product.visible'))
-                ->find($id)
+            $query = $this->model->with(config('enums.product.with'));
+
+            $roleName = null;
+            if (Helpers::isUserLogin()) {
+                $roleName = Helpers::getCurrentRoleName();
+            }
+
+            if ($roleName !== RoleEnum::ADMIN && $roleName !== RoleEnum::VENDOR) {
+                $query->where('status', 1)->where('is_approved', 1);
+            }
+
+            $product = $query->find($id);
+
+            if (!$product) {
+                throw new Exception('Product not found.', 404);
+            }
+
+            return $product->makeVisible(config('enums.product.visible'))
                 ->setAppends(config('enums.product.appends'));
 
         } catch (Exception $e){
@@ -557,8 +571,18 @@ class ProductRepository extends BaseRepository
     {
         try {
 
-            return $this->model->where('slug',$slug)
-            ->with(config('enums.product.with'))
+            $query = $this->model->where('slug',$slug);
+
+            $roleName = null;
+            if (Helpers::isUserLogin()) {
+                $roleName = Helpers::getCurrentRoleName();
+            }
+
+            if ($roleName !== RoleEnum::ADMIN && $roleName !== RoleEnum::VENDOR) {
+                $query->where('status', 1)->where('is_approved', 1);
+            }
+
+            return $query->with(config('enums.product.with'))
             ->firstOrFail()
             ->setAppends(config('enums.product.appends'))
             ->makeVisible(config('enums.product.visible'));

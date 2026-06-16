@@ -211,11 +211,16 @@ class ProductController extends Controller
             $product = Helpers::getTopSellingProducts($this->repository);
         }
 
+        $roleName = null;
         if (Helpers::isUserLogin()) {
             $roleName = Helpers::getCurrentRoleName();
             if ($roleName == RoleEnum::VENDOR) {
                 $product = $product->where('store_id', Helpers::getCurrentVendorStoreId());
             }
+        }
+
+        if ($roleName !== RoleEnum::ADMIN && $roleName !== RoleEnum::VENDOR) {
+            $product = $product->where('status', 1)->where('is_approved', 1);
         }
 
         if ($request->rating) {
