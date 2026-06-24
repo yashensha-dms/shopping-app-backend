@@ -160,7 +160,7 @@ class Product extends Model implements HasMedia
         });
     }
 
-    public function featured_product(): HasOne
+    public function featured_product(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(FeaturedProduct::class, 'product_id');
     }
@@ -170,7 +170,7 @@ class Product extends Model implements HasMedia
         return $this->featured_product()->exists() ? 1 : 0;
     }
 
-    public function trending_product(): HasOne
+    public function trending_product(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(TrendingProduct::class, 'product_id');
     }
@@ -180,7 +180,7 @@ class Product extends Model implements HasMedia
         return $this->trending_product()->exists() ? 1 : 0;
     }
 
-    public function bestselling_product(): HasOne
+    public function bestselling_product(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(BestsellingProduct::class, 'product_id');
     }
