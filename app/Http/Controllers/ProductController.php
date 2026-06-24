@@ -229,7 +229,19 @@ class ProductController extends Controller
         }
 
         if (isset($request->trending)) {
-            $product = $product->where('is_trending',$request->trending);
+            if ($request->trending) {
+                $product = $product->whereHas('trending_product');
+            } else {
+                $product = $product->whereDoesntHave('trending_product');
+            }
+        }
+
+        if (isset($request->is_trending)) {
+            if ($request->is_trending) {
+                $product = $product->whereHas('trending_product');
+            } else {
+                $product = $product->whereDoesntHave('trending_product');
+            }
         }
 
         if (isset($request->is_featured)) {

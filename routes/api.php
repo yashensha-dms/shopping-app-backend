@@ -60,6 +60,9 @@ Route::apiResource('product', 'App\Http\Controllers\ProductController',[
 Route::apiResource('featured-product', 'App\Http\Controllers\FeaturedProductController', [
   'only' => ['index'],
 ]);
+Route::apiResource('trending-product', 'App\Http\Controllers\TrendingProductController', [
+  'only' => ['index'],
+]);
 
 // Attributes
 Route::apiResource('attribute', 'App\Http\Controllers\AttributeController',[
@@ -233,6 +236,12 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
     'only' => ['store', 'destroy'],
   ])->middleware('can:product.edit');
   Route::patch('featured-product/reorder', 'App\Http\Controllers\FeaturedProductController@reorder')->middleware('can:product.edit');
+
+  // Trending Products
+  Route::apiResource('trending-product', 'App\Http\Controllers\TrendingProductController', [
+    'only' => ['store', 'destroy'],
+  ])->middleware('can:product.edit');
+  Route::patch('trending-product/reorder', 'App\Http\Controllers\TrendingProductController@reorder')->middleware('can:product.edit');
 
   // Attributes & Attribute Values
   Route::apiResource('attribute', 'App\Http\Controllers\AttributeController',[

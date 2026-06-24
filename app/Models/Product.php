@@ -166,6 +166,16 @@ class Product extends Model implements HasMedia
         return $this->featured_product()->exists() ? 1 : 0;
     }
 
+    public function trending_product(): HasOne
+    {
+        return $this->hasOne(TrendingProduct::class, 'product_id');
+    }
+
+    public function getIsTrendingAttribute()
+    {
+        return $this->trending_product()->exists() ? 1 : 0;
+    }
+
     public function sluggable(): array
     {
         return [
