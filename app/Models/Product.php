@@ -156,6 +156,16 @@ class Product extends Model implements HasMedia
         });
     }
 
+    public function featured_product(): HasOne
+    {
+        return $this->hasOne(FeaturedProduct::class, 'product_id');
+    }
+
+    public function getIsFeaturedAttribute()
+    {
+        return $this->featured_product()->exists() ? 1 : 0;
+    }
+
     public function sluggable(): array
     {
         return [

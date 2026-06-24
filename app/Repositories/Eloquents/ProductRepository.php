@@ -158,7 +158,7 @@ class ProductRepository extends BaseRepository
                 'encourage_view' => $request->encourage_view,
                 'tax_id' => $request->tax_id,
                 'status' => $request->status,
-                'is_approved' => $isAutoApprove ?? true,
+                'is_approved' => 1,
                 'cost' => $request->cost,
                 'default_variation_id' => $request->default_variation_id,
                 'store_id' => $request->store_id,
@@ -222,6 +222,7 @@ class ProductRepository extends BaseRepository
             if (!isset($request['unit']) || is_null($request['unit'])) {
                 $request['unit'] = $product->unit ?: '1';
             }
+            $request['is_approved'] = 1;
             $product->update($request);
 
             if (isset($request['product_thumbnail_id'])) {

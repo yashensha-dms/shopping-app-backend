@@ -57,6 +57,9 @@ Route::get('product/barcode/{barcode}', 'App\Http\Controllers\ProductController@
 Route::apiResource('product', 'App\Http\Controllers\ProductController',[
   'only' => ['index', 'show'],
 ]);
+Route::apiResource('featured-product', 'App\Http\Controllers\FeaturedProductController', [
+  'only' => ['index'],
+]);
 
 // Attributes
 Route::apiResource('attribute', 'App\Http\Controllers\AttributeController',[
@@ -224,6 +227,12 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
   Route::post('product/csv/import', 'App\Http\Controllers\ProductController@import')->middleware('can:product.create');
   Route::put('product/approve/{id}/{status}', 'App\Http\Controllers\ProductController@approve')->middleware('can:product.edit');
   Route::post('product/deleteAll', 'App\Http\Controllers\ProductController@deleteAll')->middleware('can:product.destroy');
+
+  // Featured Products
+  Route::apiResource('featured-product', 'App\Http\Controllers\FeaturedProductController', [
+    'only' => ['store', 'destroy'],
+  ])->middleware('can:product.edit');
+  Route::patch('featured-product/reorder', 'App\Http\Controllers\FeaturedProductController@reorder')->middleware('can:product.edit');
 
   // Attributes & Attribute Values
   Route::apiResource('attribute', 'App\Http\Controllers\AttributeController',[

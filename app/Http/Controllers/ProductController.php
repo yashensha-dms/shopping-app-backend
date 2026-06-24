@@ -232,6 +232,14 @@ class ProductController extends Controller
             $product = $product->where('is_trending',$request->trending);
         }
 
+        if (isset($request->is_featured)) {
+            if ($request->is_featured) {
+                $product = $product->whereHas('featured_product');
+            } else {
+                $product = $product->whereDoesntHave('featured_product');
+            }
+        }
+
         if ($request->ids) {
             $ids = explode(',',$request->ids);
             $product = $product->whereIn('id', $ids);
