@@ -55,6 +55,7 @@ class Product extends Model implements HasMedia
         'is_return',
         'is_free_shipping',
         'is_featured',
+        'bestselling',
         'shipping_days',
         'is_random_related_products',
         'tax_id',
@@ -102,6 +103,7 @@ class Product extends Model implements HasMedia
         'related_products',
         'cross_sell_products',
         'margin',
+        'bestselling',
     ];
 
     protected $hidden = [
@@ -135,6 +137,7 @@ class Product extends Model implements HasMedia
         'is_random_related_products' => 'integer',
         'status' => 'integer',
         'is_trending' => 'integer',
+        'bestselling' => 'integer',
         'is_approved' => 'integer',
         'reviews_count' => 'integer',
         'rating_count' => 'float',
@@ -174,6 +177,16 @@ class Product extends Model implements HasMedia
     public function getIsTrendingAttribute()
     {
         return $this->trending_product()->exists() ? 1 : 0;
+    }
+
+    public function bestselling_product(): HasOne
+    {
+        return $this->hasOne(BestsellingProduct::class, 'product_id');
+    }
+
+    public function getBestsellingAttribute()
+    {
+        return $this->bestselling_product()->exists() ? 1 : 0;
     }
 
     public function sluggable(): array

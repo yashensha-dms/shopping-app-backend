@@ -252,6 +252,14 @@ class ProductController extends Controller
             }
         }
 
+        if (isset($request->bestselling)) {
+            if ($request->bestselling) {
+                $product = $product->whereHas('bestselling_product');
+            } else {
+                $product = $product->whereDoesntHave('bestselling_product');
+            }
+        }
+
         if ($request->ids) {
             $ids = explode(',',$request->ids);
             $product = $product->whereIn('id', $ids);
