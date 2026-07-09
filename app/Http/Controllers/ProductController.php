@@ -262,12 +262,18 @@ class ProductController extends Controller
 
         if ($request->ids) {
             $ids = explode(',',$request->ids);
-            $product = $product->whereIn('id', $ids);
             $with_union_products = (boolean) $request->with_union_products;
             if ($with_union_products) {
-                $limit = $request->paginate - count($ids);
-                $with_union_products = $this->repository->whereNotIn('id', $ids)->inRandomOrder()->take($limit);
-                $product = $product->union($with_union_products);
+                $limit = intval($request->paginate) - count($ids);
+                if ($limit > 0) {
+                    $unionIds = Product::whereNotIn('id', $ids)->where('status', 1)->where('is_approved', 1)->inRandomOrder()->take($limit)->pluck('id')->toArray();
+                    $allIds = array_merge($ids, $unionIds);
+                    $product = $product->whereIn('id', $allIds);
+                } else {
+                    $product = $product->whereIn('id', $ids);
+                }
+            } else {
+                $product = $product->whereIn('id', $ids);
             }
         }
 
