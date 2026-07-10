@@ -378,42 +378,30 @@ class AuthController extends Controller
             $validator = Validator::make($request->all(), [
                 'phone' => 'required',
                 'country_code' => 'nullable',
-                'name' => 'nullable|string|max:255', // Optional for quick signup
+                'name' => 'nullable|string|max:255',
             ]);
 
             if ($validator->fails()) {
                 throw new Exception($validator->messages()->first(), 422);
             }
 
-            $user = User::where('phone', $request->phone)->first();
+            // 1. Delete any existing OTPs for this phone
+            \App\Models\OtpCode::where('phone', $request->phone)->delete();
 
-            if (!$user) {
-                // For a mobile app, if user doesn't exist, we can register them on the fly if name is provided.
-                // Or we can just create a temporary entry.
-                // Given the requirement: "after registration the user should be authenticate using mobile and otp"
+            // 2. Generate random 6-digit OTP
+            $otp = (string) rand(100000, 999999);
 
-                $user = User::create([
-                    'name' => $request->name,
-                    'phone' => $request->phone,
-                    'country_code' => $request->country_code ?? '+91',
-                    'status' => 1,
-                ]);
+            // 3. Store hashed OTP in otp_codes with expires_at = now + 5 minutes
+            \App\Models\OtpCode::create([
+                'phone' => $request->phone,
+                'country_code' => $request->country_code ?? '+91',
+                'name' => $request->name,
+                'otp' => Hash::make($otp),
+                'expires_at' => Carbon::now()->addMinutes(5),
+            ]);
 
-                $user->assignRole(RoleEnum::CONSUMER);
-
-                if (Helpers::pointIsEnable()) {
-                    $settings = Helpers::getSettings();
-                    $signUpPoints = $settings['wallet_points']['signup_points'];
-                    $this->creditPoints($user->id, $signUpPoints, WalletPointsDetail::SIGN_UP_BONUS);
-                    event(new SignUpBonusPointsEvent($user));
-                }
-
-                if (Helpers::walletIsEnable()) {
-                    $user->wallet()->create();
-                }
-            }
-
-            $this->smsService->sendOtp($user);
+            // 4. Send SMS via Spring Edge
+            $this->smsService->sendOtp($request->phone, $otp);
 
             return [
                 'message' => 'OTP has been sent successfully to your mobile number.',
@@ -437,33 +425,72 @@ class AuthController extends Controller
                 throw new Exception($validator->messages()->first(), 422);
             }
 
-            if ($request->otp === "123456") {
-                $user = User::where('phone', $request->phone)->first();
-            } else {
-                $user = User::where('phone', $request->phone)
-                            ->where('otp', $request->otp)
-                            ->where('otp_expires_at', '>', Carbon::now())
-                            ->first();
+            // 1. Look up otp_codes where phone matches and expires_at > now()
+            $records = \App\Models\OtpCode::where('phone', $request->phone)
+                                         ->where('expires_at', '>', Carbon::now())
+                                         ->get();
+
+            $matchedRecord = null;
+            // 2. Verify with Hash::check
+            foreach ($records as $record) {
+                if (Hash::check($request->otp, $record->otp)) {
+                    $matchedRecord = $record;
+                    break;
+                }
             }
 
-            if (!$user) {
+            if (!$matchedRecord) {
                 throw new Exception("Invalid or expired OTP code.", 400);
             }
 
-            // Clear OTP after successful verification
-            $user->otp = null;
-            $user->otp_expires_at = null;
-            $user->save();
+            // 3. If valid: delete the OTP record(s)
+            \App\Models\OtpCode::where('phone', $request->phone)->delete();
 
+            // Find user by phone or create them
+            $user = User::where('phone', $request->phone)->first();
+
+            if (!$user) {
+                $name = $matchedRecord->name ?? 'User ' . substr($request->phone, -4);
+                $email = $request->phone . '@app.com';
+
+                $user = User::create([
+                    'name' => $name,
+                    'phone' => $request->phone,
+                    'email' => $email,
+                    'country_code' => $matchedRecord->country_code ?? '+91',
+                    'status' => 1,
+                ]);
+
+                $user->assignRole(RoleEnum::CONSUMER);
+
+                if (Helpers::pointIsEnable()) {
+                    $settings = Helpers::getSettings();
+                    $signUpPoints = $settings['wallet_points']['signup_points'];
+                    $this->creditPoints($user->id, $signUpPoints, WalletPointsDetail::SIGN_UP_BONUS);
+                    event(new SignUpBonusPointsEvent($user));
+                }
+
+                if (Helpers::walletIsEnable()) {
+                    $user->wallet()->create();
+                }
+            }
+
+            // Issue Sanctum token
             $token = $user->createToken('auth_token')->plainTextToken;
             $user->tokens()->orderBy('id', 'desc')->first()->update([
                 'role_type' => $user->getRoleNames()->first()
             ]);
 
             return [
+                'success' => true,
                 'access_token' => $token,
-                'permissions'  => $user->getAllPermissions(),
-                'success' => true
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'phone' => $user->phone,
+                    'email' => $user->email,
+                ],
+                'permissions' => $user->getAllPermissions(),
             ];
 
         } catch (Exception $e) {

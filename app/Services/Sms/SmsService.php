@@ -14,14 +14,9 @@ class SmsService
         $this->provider = $provider;
     }
 
-    public function sendOtp(User $user)
+    public function sendOtp(string $phone, string $otp)
     {
-        $otp = rand(100000, 999999);
-        $user->otp = $otp;
-        $user->otp_expires_at = Carbon::now()->addMinutes(5);
-        $user->save();
-
-        $message = "Your OTP for login is: {$otp}. It will expire in 5 minutes.";
-        return $this->provider->send($user->phone ?? 'unknown', $message);
+        $message = "Your Grabzo verification code is {$otp}. Valid for 5 minutes.";
+        return $this->provider->send($phone, $message);
     }
 }

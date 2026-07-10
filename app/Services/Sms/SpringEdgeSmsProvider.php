@@ -9,9 +9,10 @@ class SpringEdgeSmsProvider implements SmsProviderInterface
 {
     public function send(string $phone, string $message): bool
     {
-        $apiKey = env('SPRING_EDGE_API_KEY');
-        $sender = env('SPRING_EDGE_SENDER');
-        $dltTemplateId = env('SPRING_EDGE_DLT_TEMPLATE_ID');
+        // Support both configurations (with and without underscores)
+        $apiKey = env('SPRING_EDGE_API_KEY') ?: env('SPRINGEDGE_API_KEY');
+        $sender = env('SPRING_EDGE_SENDER') ?: env('SPRINGEDGE_SENDER');
+        $dltTemplateId = env('SPRING_EDGE_DLT_TEMPLATE_ID') ?: env('SPRINGEDGE_DLT_TEMPLATE_ID');
 
         // Fallback to log provider if not configured yet
         if (empty($apiKey) || empty($sender)) {
@@ -23,13 +24,19 @@ class SpringEdgeSmsProvider implements SmsProviderInterface
         }
 
         try {
-            // Spring Edge endpoint
-            $url = 'https://web.springedge.com/web/api/send/';
+            // Spring Edge endpoint specified in production plan
+            $url = 'https://instantalerts.co/api/web/send';
             
+            // Format phone to prefix with 91 if it doesn't already have it
+            $formattedPhone = $phone;
+            if (!str_starts_with($formattedPhone, '91') && strlen($formattedPhone) == 10) {
+                $formattedPhone = '91' . $formattedPhone;
+            }
+
             $params = [
                 'apikey'  => $apiKey,
                 'sender'  => $sender,
-                'to'      => $phone,
+                'to'      => $formattedPhone,
                 'message' => $message,
                 'format'  => 'json'
             ];
@@ -42,7 +49,7 @@ class SpringEdgeSmsProvider implements SmsProviderInterface
             $response = Http::get($url, $params);
 
             if ($response->successful()) {
-                Log::info("SMS successfully sent via Spring Edge to " . $phone);
+                Log::info("SMS successfully sent via Spring Edge to " . $formattedPhone);
                 return true;
             }
 
