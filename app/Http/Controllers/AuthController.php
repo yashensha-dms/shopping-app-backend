@@ -375,6 +375,8 @@ class AuthController extends Controller
     public function sendOtp(Request $request)
     {
         try {
+            \Illuminate\Support\Facades\Log::info("OTP Send Request Received:", $request->all());
+
             $validator = Validator::make($request->all(), [
                 'phone' => 'required',
                 'country_code' => 'nullable',
@@ -416,6 +418,8 @@ class AuthController extends Controller
     public function verifyOtp(Request $request)
     {
         try {
+            \Illuminate\Support\Facades\Log::info("OTP Verification Request Received:", $request->all());
+
             $validator = Validator::make($request->all(), [
                 'phone' => 'required',
                 'otp' => 'required',
