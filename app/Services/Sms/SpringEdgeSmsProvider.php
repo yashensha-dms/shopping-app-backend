@@ -46,7 +46,7 @@ class SpringEdgeSmsProvider implements SmsProviderInterface
                 $params['dlttemplateid'] = $dltTemplateId;
             }
 
-            $response = Http::get($url, $params);
+            $response = Http::timeout(10)->get($url, $params);
 
             if ($response->successful()) {
                 Log::info("SMS successfully sent via Spring Edge to " . $formattedPhone);
