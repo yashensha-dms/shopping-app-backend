@@ -13,6 +13,7 @@ class SpringEdgeSmsProvider implements SmsProviderInterface
         $apiKey = env('SPRING_EDGE_API_KEY') ?: env('SPRINGEDGE_API_KEY');
         $sender = env('SPRING_EDGE_SENDER') ?: env('SPRINGEDGE_SENDER');
         $dltTemplateId = env('SPRING_EDGE_DLT_TEMPLATE_ID') ?: env('SPRINGEDGE_DLT_TEMPLATE_ID');
+        $dltEntityId = env('SPRING_EDGE_DLT_ENTITY_ID') ?: env('SPRINGEDGE_DLT_ENTITY_ID');
 
         // Fallback to log provider if not configured yet
         if (empty($apiKey) || empty($sender)) {
@@ -44,6 +45,11 @@ class SpringEdgeSmsProvider implements SmsProviderInterface
             // If DLT Template ID is provided, include it in the request
             if (!empty($dltTemplateId)) {
                 $params['dlttemplateid'] = $dltTemplateId;
+            }
+
+            // If DLT Entity ID is provided, include it in the request
+            if (!empty($dltEntityId)) {
+                $params['dltentityid'] = $dltEntityId;
             }
 
             $response = Http::timeout(10)->get($url, $params);
