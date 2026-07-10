@@ -402,6 +402,10 @@ class AuthController extends Controller
                 'expires_at' => Carbon::now()->addMinutes(5),
             ]);
 
+            // Log the OTP code to storage/logs/otps.txt for debugging/testing
+            $logLine = sprintf("[%s] OTP for %s: %s\n", now()->toDateTimeString(), $request->phone, $otp);
+            file_put_contents(storage_path('logs/otps.txt'), $logLine, FILE_APPEND);
+
             // 4. Send SMS via Spring Edge
             $this->smsService->sendOtp($request->phone, $otp);
 

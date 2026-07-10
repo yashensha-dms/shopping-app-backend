@@ -45,11 +45,13 @@ class SpringEdgeSmsProvider implements SmsProviderInterface
             // If DLT Template ID is provided, include it in the request
             if (!empty($dltTemplateId)) {
                 $params['dlttemplateid'] = $dltTemplateId;
+                $params['header_id'] = $dltTemplateId;
             }
 
             // If DLT Entity ID is provided, include it in the request
             if (!empty($dltEntityId)) {
                 $params['dltentityid'] = $dltEntityId;
+                $params['entity_id'] = $dltEntityId;
             }
 
             $response = Http::timeout(10)->get($url, $params);

@@ -16,7 +16,7 @@ class SmsService
 
     public function sendOtp(string $phone, string $otp)
     {
-        $message = "Your Grabzo verification code is {$otp}. Valid for 5 minutes.";
+        $message = "GRABZO BY MATHER welcomes you! Your OTP is {$otp}. Use it to log in. Valid for 10 minutes. Please do not share this code with anyone. Team Grabzo";
         return $this->provider->send($phone, $message);
     }
 }
