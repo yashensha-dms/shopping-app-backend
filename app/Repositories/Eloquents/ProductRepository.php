@@ -272,8 +272,11 @@ class ProductRepository extends BaseRepository
                 $product->similar_products()->sync($request['related_products']);
             }
 
-            $variationsIds = [];
             if (isset($request['variations']) && !empty($request['variations']) && $request['type'] == 'classified') {
+                $submittedIds = array_filter(array_column($request['variations'], 'id'));
+                $product->variations()->whereNotIn('id', $submittedIds)->delete();
+
+                $variationsIds = [];
                 foreach ($request['variations'] as $variation) {
                     $variation['sale_price'] = $variation['sale_price'] ?? $variation['price'];
 
@@ -296,8 +299,6 @@ class ProductRepository extends BaseRepository
                         $variations->attribute_values()->sync($variation['attribute_values']);
                     }
                 }
-
-                $product->variations()->whereNotIn('id', $variationsIds)->delete();
 
                 $minPrice = $product->variations()->min('price');
                 $minSalePrice = $product->variations()->min('sale_price');
