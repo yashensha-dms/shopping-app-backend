@@ -130,21 +130,18 @@ class UpdateProductRequest extends FormRequest
             $id = $this->route('product') ? $this->route('product')->id : $this->id;
             $sku = $this->input('sku');
             if ($sku) {
-                $existingProduct = \App\Models\Product::withTrashed()->where('sku', $sku)->first();
+                $existingProduct = \App\Models\Product::where('sku', $sku)->first();
                 if ($existingProduct && $existingProduct->id != $id) {
-                    $deletedStr = $existingProduct->deleted_at ? "deleted on " . $existingProduct->deleted_at : "active";
-                    $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by product '{$existingProduct->name}' ({$deletedStr}).");
+                    $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by product '{$existingProduct->name}' (active).");
                 }
                 
-                $existingVar = \App\Models\Variation::withTrashed()
-                    ->where('sku', $sku)
+                $existingVar = \App\Models\Variation::where('sku', $sku)
                     ->where('product_id', '!=', $id)
                     ->first();
                 if ($existingVar) {
-                    $parentProduct = $existingVar->product()->withTrashed()->first();
+                    $parentProduct = $existingVar->product()->first();
                     $pName = $parentProduct ? $parentProduct->name : 'Unknown Product';
-                    $deletedStr = $existingVar->deleted_at ? "deleted on " . $existingVar->deleted_at : "active";
-                    $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by variation in product '{$pName}' ({$deletedStr}).");
+                    $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by variation in product '{$pName}' (active).");
                 }
             }
 
@@ -154,15 +151,13 @@ class UpdateProductRequest extends FormRequest
                     if (!empty($variation['sku'])) {
                         $vSku = $variation['sku'];
                         
-                        $existingProduct = \App\Models\Product::withTrashed()->where('sku', $vSku)->first();
+                        $existingProduct = \App\Models\Product::where('sku', $vSku)->first();
                         if ($existingProduct && $existingProduct->id != $id) {
-                            $deletedStr = $existingProduct->deleted_at ? "deleted on " . $existingProduct->deleted_at : "active";
-                            $validator->errors()->add("variations.{$index}.sku", "The variation SKU '{$vSku}' is already taken by product '{$existingProduct->name}' ({$deletedStr}).");
+                            $validator->errors()->add("variations.{$index}.sku", "The variation SKU '{$vSku}' is already taken by product '{$existingProduct->name}' (active).");
                             continue;
                         }
 
-                        $existingVar = \App\Models\Variation::withTrashed()
-                            ->where('sku', $vSku)
+                        $existingVar = \App\Models\Variation::where('sku', $vSku)
                             ->when(!empty($variation['id']), function ($q) use ($variation) {
                                 return $q->where('id', '!=', $variation['id']);
                             })
@@ -171,10 +166,9 @@ class UpdateProductRequest extends FormRequest
                             })
                             ->first();
                         if ($existingVar) {
-                            $parentProduct = $existingVar->product()->withTrashed()->first();
+                            $parentProduct = $existingVar->product()->first();
                             $pName = $parentProduct ? $parentProduct->name : 'Unknown Product';
-                            $deletedStr = $existingVar->deleted_at ? "deleted on " . $existingVar->deleted_at : "active";
-                            $validator->errors()->add("variations.{$index}.sku", "The variation SKU '{$vSku}' is already taken by variation in product '{$pName}' ({$deletedStr}).");
+                            $validator->errors()->add("variations.{$index}.sku", "The variation SKU '{$vSku}' is already taken by variation in product '{$pName}' (active).");
                         }
                     }
                 }
