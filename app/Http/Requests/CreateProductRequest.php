@@ -75,7 +75,7 @@ class CreateProductRequest extends FormRequest
             'variations.*.stock_status' => ['required_if:type,==,classified', 'in:in_stock,out_of_stock,coming_soon'],
             'variations.*.attribute_values' => ['required_if:type,==,classified','exists:attribute_values,id,deleted_at,NULL'],
             'variations.*.discount' => ['nullable','numeric', 'regex:/^([0-9]{1,2}){1}(\.[0-9]{1,2})?$/'],
-            'variations.*.sku' => ['required_if:type,==,classified', 'string', 'unique:variations,sku'],
+            'variations.*.sku' => ['required_if:type,==,classified', 'string', 'unique:variations,sku,NULL,id,deleted_at,NULL'],
             'variations.*.status' => ['required_if:type,==,classified','min:0','max:1'],
             'variations.*.variation_image_id' => ['nullable','exists:attachments,id,deleted_at,NULL']
         ];
