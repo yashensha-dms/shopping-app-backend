@@ -330,7 +330,9 @@ class ProductRepository extends BaseRepository
     {
         try {
 
-            return $this->model->findOrFail($id)->destroy($id);
+            $product = $this->model->findOrFail($id);
+            $product->variations()->delete();
+            return $product->destroy($id);
 
         } catch (Exception $e){
 

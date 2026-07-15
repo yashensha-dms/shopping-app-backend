@@ -48,7 +48,9 @@ class UpdateCouponRequest extends FormRequest
         ];
 
         if (Request::input('type') == AmountEnum::PERCENTAGE) {
-            return array_merge($coupon, ['amount' => ['required', 'regex:/^([0-9]{1,2}){1}(\.[0-9]{1,2})?$/']]);
+            return array_merge($coupon, ['amount' => ['required', 'numeric', 'between:0,100']]);
+        } elseif (Request::input('type') == 'fixed') {
+            return array_merge($coupon, ['amount' => ['required', 'numeric', 'min:0']]);
         }
 
         return $coupon;
@@ -57,7 +59,7 @@ class UpdateCouponRequest extends FormRequest
     public function messages()
     {
         return [
-            'amount.regex' => 'Enter amount percentage between 0 to 99.99',
+            'amount.between' => 'Enter amount percentage between 0 to 100',
             'type.in' => 'Coupon type can be free_shipping or fixed or percentage',
         ];
     }
