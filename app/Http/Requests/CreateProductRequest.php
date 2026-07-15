@@ -108,7 +108,7 @@ class CreateProductRequest extends FormRequest
                     $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by product '{$existingProduct->name}' (active).");
                 }
                 
-                $existingVar = \App\Models\Variation::where('sku', $sku)->first();
+                $existingVar = \App\Models\Variation::where('sku', $sku)->whereHas('product')->first();
                 if ($existingVar) {
                     $parentProduct = $existingVar->product()->first();
                     $pName = $parentProduct ? $parentProduct->name : 'Unknown Product';
@@ -129,6 +129,7 @@ class CreateProductRequest extends FormRequest
                         }
 
                         $existingVar = \App\Models\Variation::where('sku', $vSku)
+                            ->whereHas('product')
                             ->when(!empty($variation['id']), function ($q) use ($variation) {
                                 return $q->where('id', '!=', $variation['id']);
                             })

@@ -144,6 +144,7 @@ class UpdateProductRequest extends FormRequest
                 }
                 
                 $existingVar = \App\Models\Variation::where('sku', $sku)
+                    ->whereHas('product')
                     ->where('product_id', '!=', $id)
                     ->first();
                 if ($existingVar) {
@@ -166,6 +167,7 @@ class UpdateProductRequest extends FormRequest
                         }
 
                         $existingVar = \App\Models\Variation::where('sku', $vSku)
+                            ->whereHas('product')
                             ->when(!empty($variation['id']), function ($q) use ($variation) {
                                 return $q->where('id', '!=', $variation['id']);
                             })
