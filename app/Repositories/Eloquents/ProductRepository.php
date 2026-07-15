@@ -171,8 +171,11 @@ class ProductRepository extends BaseRepository
                     $variations[] = $this->createProductVariation($product, $variation);
                 }
 
-                $minPrice = min(array_column($request['variations'], 'price'));
-                $minSalePrice = min(array_column($request['variations'], 'sale_price'));
+                $prices = array_filter(array_column($request['variations'], 'price'), function($v) { return !is_null($v); });
+                $minPrice = count($prices) > 0 ? min($prices) : 0;
+
+                $salePrices = array_filter(array_column($request['variations'], 'sale_price'), function($v) { return !is_null($v); });
+                $minSalePrice = count($salePrices) > 0 ? min($salePrices) : $minPrice;
 
                 $updateData = [
                     'price' => $minPrice,

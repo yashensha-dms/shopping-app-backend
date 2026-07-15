@@ -25,7 +25,11 @@ class UpdateProductRequest extends FormRequest
      */
     public function rules()
     {
-        $id = $this->route('product') ? $this->route('product')->id : $this->id;
+        $productParam = $this->route('product');
+        $id = ($productParam instanceof \Illuminate\Database\Eloquent\Model) ? $productParam->id : $productParam;
+        if (!$id) {
+            $id = $this->id;
+        }
         if (isset($this->related_products)) {
             foreach ($this->related_products as $related_product) {
                 if ($id == $related_product) {
@@ -127,7 +131,11 @@ class UpdateProductRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            $id = $this->route('product') ? $this->route('product')->id : $this->id;
+            $productParam = $this->route('product');
+            $id = ($productParam instanceof \Illuminate\Database\Eloquent\Model) ? $productParam->id : $productParam;
+            if (!$id) {
+                $id = $this->id;
+            }
             $sku = $this->input('sku');
             if ($sku) {
                 $existingProduct = \App\Models\Product::where('sku', $sku)->first();
