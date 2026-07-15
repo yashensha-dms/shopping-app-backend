@@ -40,7 +40,7 @@ class CreateProductRequest extends FormRequest
             'product_meta_image_id' => ['nullable','exists:attachments,id,deleted_at,NULL'],
             'product_thumbnail_id'  => ['nullable','exists:attachments,id,deleted_at,NULL'],
             'product_galleries_id.*' => ['nullable','exists:attachments,id,deleted_at,NULL'],
-            'sku' => ['required_if:type,==,simple', 'unique:products,sku,NULL,id,deleted_at,NULL'],
+            'sku' => ['required_if:type,==,simple'],
             'is_external' => ['min:0', 'max:1'],
             'external_url' => ['required_if:is_external,==,1', 'nullable'],
             'external_button_text' => ['required_if:type,==,external', 'nullable'],
@@ -75,7 +75,7 @@ class CreateProductRequest extends FormRequest
             'variations.*.stock_status' => ['required_if:type,==,classified', 'in:in_stock,out_of_stock,coming_soon'],
             'variations.*.attribute_values' => ['required_if:type,==,classified','exists:attribute_values,id,deleted_at,NULL'],
             'variations.*.discount' => ['nullable','numeric', 'regex:/^([0-9]{1,2}){1}(\.[0-9]{1,2})?$/'],
-            'variations.*.sku' => ['required_if:type,==,classified', 'string', 'unique:variations,sku,NULL,id,deleted_at,NULL'],
+            'variations.*.sku' => ['required_if:type,==,classified', 'string'],
             'variations.*.status' => ['required_if:type,==,classified','min:0','max:1'],
             'variations.*.variation_image_id' => ['nullable','exists:attachments,id,deleted_at,NULL']
         ];
@@ -96,5 +96,56 @@ class CreateProductRequest extends FormRequest
     public function failedValidation(Validator $validator)
     {
         throw new ExceptionHandler($validator->errors()->first(), 422);
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $sku = $this->input('sku');
+            if ($sku) {
+                $existingProduct = \App\Models\Product::withTrashed()->where('sku', $sku)->first();
+                if ($existingProduct) {
+                    $deletedStr = $existingProduct->deleted_at ? "deleted on " . $existingProduct->deleted_at : "active";
+                    $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by product '{$existingProduct->name}' ({$deletedStr}).");
+                }
+                
+                $existingVar = \App\Models\Variation::withTrashed()->where('sku', $sku)->first();
+                if ($existingVar) {
+                    $parentProduct = $existingVar->product()->withTrashed()->first();
+                    $pName = $parentProduct ? $parentProduct->name : 'Unknown Product';
+                    $deletedStr = $existingVar->deleted_at ? "deleted on " . $existingVar->deleted_at : "active";
+                    $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by variation in product '{$pName}' ({$deletedStr}).");
+                }
+            }
+
+            $variations = $this->input('variations', []);
+            if (is_array($variations)) {
+                foreach ($variations as $index => $variation) {
+                    if (!empty($variation['sku'])) {
+                        $vSku = $variation['sku'];
+                        
+                        $existingProduct = \App\Models\Product::withTrashed()->where('sku', $vSku)->first();
+                        if ($existingProduct) {
+                            $deletedStr = $existingProduct->deleted_at ? "deleted on " . $existingProduct->deleted_at : "active";
+                            $validator->errors()->add("variations.{$index}.sku", "The variation SKU '{$vSku}' is already taken by product '{$existingProduct->name}' ({$deletedStr}).");
+                            continue;
+                        }
+
+                        $existingVar = \App\Models\Variation::withTrashed()
+                            ->where('sku', $vSku)
+                            ->when(!empty($variation['id']), function ($q) use ($variation) {
+                                return $q->where('id', '!=', $variation['id']);
+                            })
+                            ->first();
+                        if ($existingVar) {
+                            $parentProduct = $existingVar->product()->withTrashed()->first();
+                            $pName = $parentProduct ? $parentProduct->name : 'Unknown Product';
+                            $deletedStr = $existingVar->deleted_at ? "deleted on " . $existingVar->deleted_at : "active";
+                            $validator->errors()->add("variations.{$index}.sku", "The variation SKU '{$vSku}' is already taken by variation in product '{$pName}' ({$deletedStr}).");
+                        }
+                    }
+                }
+            }
+        });
     }
 }

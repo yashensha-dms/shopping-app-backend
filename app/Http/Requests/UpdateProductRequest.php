@@ -49,7 +49,7 @@ class UpdateProductRequest extends FormRequest
             'cost'                  => ['nullable', 'numeric'],
             'type'                  => ['nullable','in:simple,classified'],
             'stock_status'          => ['nullable', 'in:in_stock,out_of_stock'],
-            'sku'                   => ['nullable', "unique:products,sku,{$id},id,deleted_at,NULL"],
+            'sku'                   => ['nullable'],
             'quantity'              => ['nullable', 'integer'],
             'price'                 => ['required_if:type,==,simple', 'nullable', 'numeric'],
             'categories'            => ['nullable', 'exists:categories,id,deleted_at,NULL'],
@@ -102,10 +102,7 @@ class UpdateProductRequest extends FormRequest
     public function withUniqueVariationSkuRule($rules, $variations)
     {
         foreach ($variations as $key => $variation) {
-            $rules['variations.'.$key.'.sku'] = ['nullable','required_if:type,==,classified', 'string', 'unique:variations,sku,NULL,id,deleted_at,NULL'];
-            if (!empty($variation['id'])) {
-                $rules['variations.'.$key.'.sku'] = ['nullable','required_if:type,==,classified', 'string', 'unique:variations,sku,'.$variation['id'].',id,deleted_at,NULL'];
-            }
+            $rules['variations.'.$key.'.sku'] = ['nullable','required_if:type,==,classified', 'string'];
         }
 
         return $rules;
@@ -125,5 +122,63 @@ class UpdateProductRequest extends FormRequest
     public function failedValidation(Validator $validator)
     {
         throw new ExceptionHandler($validator->errors()->first(), 422);
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $id = $this->route('product') ? $this->route('product')->id : $this->id;
+            $sku = $this->input('sku');
+            if ($sku) {
+                $existingProduct = \App\Models\Product::withTrashed()->where('sku', $sku)->first();
+                if ($existingProduct && $existingProduct->id != $id) {
+                    $deletedStr = $existingProduct->deleted_at ? "deleted on " . $existingProduct->deleted_at : "active";
+                    $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by product '{$existingProduct->name}' ({$deletedStr}).");
+                }
+                
+                $existingVar = \App\Models\Variation::withTrashed()
+                    ->where('sku', $sku)
+                    ->where('product_id', '!=', $id)
+                    ->first();
+                if ($existingVar) {
+                    $parentProduct = $existingVar->product()->withTrashed()->first();
+                    $pName = $parentProduct ? $parentProduct->name : 'Unknown Product';
+                    $deletedStr = $existingVar->deleted_at ? "deleted on " . $existingVar->deleted_at : "active";
+                    $validator->errors()->add('sku', "The SKU '{$sku}' is already taken by variation in product '{$pName}' ({$deletedStr}).");
+                }
+            }
+
+            $variations = $this->input('variations', []);
+            if (is_array($variations)) {
+                foreach ($variations as $index => $variation) {
+                    if (!empty($variation['sku'])) {
+                        $vSku = $variation['sku'];
+                        
+                        $existingProduct = \App\Models\Product::withTrashed()->where('sku', $vSku)->first();
+                        if ($existingProduct && $existingProduct->id != $id) {
+                            $deletedStr = $existingProduct->deleted_at ? "deleted on " . $existingProduct->deleted_at : "active";
+                            $validator->errors()->add("variations.{$index}.sku", "The variation SKU '{$vSku}' is already taken by product '{$existingProduct->name}' ({$deletedStr}).");
+                            continue;
+                        }
+
+                        $existingVar = \App\Models\Variation::withTrashed()
+                            ->where('sku', $vSku)
+                            ->when(!empty($variation['id']), function ($q) use ($variation) {
+                                return $q->where('id', '!=', $variation['id']);
+                            })
+                            ->when(empty($variation['id']), function ($q) use ($id) {
+                                return $q->where('product_id', '!=', $id);
+                            })
+                            ->first();
+                        if ($existingVar) {
+                            $parentProduct = $existingVar->product()->withTrashed()->first();
+                            $pName = $parentProduct ? $parentProduct->name : 'Unknown Product';
+                            $deletedStr = $existingVar->deleted_at ? "deleted on " . $existingVar->deleted_at : "active";
+                            $validator->errors()->add("variations.{$index}.sku", "The variation SKU '{$vSku}' is already taken by variation in product '{$pName}' ({$deletedStr}).");
+                        }
+                    }
+                }
+            }
+        });
     }
 }
