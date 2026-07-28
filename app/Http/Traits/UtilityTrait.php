@@ -21,10 +21,15 @@ trait UtilityTrait
   public function isEnablePaymentMethod($method)
   {
     $settings = Helpers::getSettings();
-    if ($settings['payment_methods'][$method]) {
-      if ($settings['payment_methods'][$method]['status']) {
+    $paymentMethods = $settings['payment_methods'] ?? [];
+    if (isset($paymentMethods[$method])) {
+      if (isset($paymentMethods[$method]['status']) && $paymentMethods[$method]['status']) {
         return true;
       }
+    }
+
+    if ($method === 'cod') {
+      return true;
     }
 
     return false;
