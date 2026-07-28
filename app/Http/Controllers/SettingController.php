@@ -24,7 +24,7 @@ class SettingController extends Controller
     
     public function index()
     {
-        return $this->repository->frontSettings();
+        return $this->repository->adminSettings();
     }
 
     public function update(UpdateSettingRequest $request, Setting $setting)

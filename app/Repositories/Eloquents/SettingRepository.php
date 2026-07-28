@@ -24,6 +24,17 @@ class SettingRepository extends BaseRepository
         return Setting::class;
     }
 
+    public function adminSettings()
+    {
+        try {
+            $setting = Setting::first();
+            $settingValues = $setting ? $setting->values : [];
+            return ['values' => $settingValues];
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
+
     public function frontSettings()
     {
         try {
@@ -32,15 +43,16 @@ class SettingRepository extends BaseRepository
             $paymentMethods = PaymentMethod::ALL_PAYMENT_METHODS;
 
             foreach ($paymentMethods as $paymentMethod) {
+                $pm = $settingValues['payment_methods'][$paymentMethod] ?? [];
                 $paymentMethodStatus[] = [
                     "name" => $paymentMethod,
-                    "title" => $settingValues['payment_methods'][$paymentMethod]['title'],
-                    "status" => $settingValues['payment_methods'][$paymentMethod]['status']
+                    "title" => $pm['title'] ?? '',
+                    "status" => $pm['status'] ?? false
                 ];
             }
 
             $settings['values'] = Arr::only($settingValues, array_column(FrontSettingsEnum::cases(), 'value'));
-            $settings['values']['payment_methods'] = $paymentMethodStatus;
+            $settings['values']['payment_methods'] = $paymentMethodStatus ?? [];
 
             return $settings;
 
