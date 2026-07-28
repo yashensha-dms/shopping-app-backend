@@ -86,7 +86,8 @@ class Helpers
   // Get queary base data
   public static function getSettings()
   {
-    return Setting::pluck('values')->first();
+    $setting = Setting::first();
+    return $setting ? $setting->values : [];
   }
 
   public static function getAdmin()
