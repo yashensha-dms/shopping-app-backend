@@ -163,8 +163,15 @@ class Helpers
   public static function getDefaultCurrencyCode()
   {
     $settings = Helpers::getSettings();
-    $currency_id = $settings['general']['default_currency_id'];
-    return Currency::whereId($currency_id)->pluck('code')->first();
+    $currency_id = $settings['general']['default_currency_id'] ?? null;
+    if ($currency_id) {
+      $code = Currency::whereId($currency_id)->pluck('code')->first();
+      if ($code) {
+        return $code;
+      }
+    }
+    $firstCurrency = Currency::first();
+    return $firstCurrency ? $firstCurrency->code : 'INR';
   }
 
   public static function getCurrencyExchangeRate($currencyCode)

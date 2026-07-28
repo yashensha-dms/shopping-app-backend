@@ -35,12 +35,6 @@ class Setting extends Model implements HasMedia
     public function getValuesAttribute($value)
     {
         $values = is_array($value) ? $value : (json_decode($value, true) ?: []);
-        $lightLogoImage = Attachment::find($values['general']['light_logo_image_id'] ?? null);
-        $darkLogoImage = Attachment::find($values['general']['dark_logo_image_id'] ?? null);
-        $faviconImage = Attachment::find($values['general']['favicon_image_id'] ?? null);
-        $tinyImage = Attachment::find($values['general']['tiny_logo_image_id'] ?? null);
-        $defaultCurrency = Currency::find($values['general']['default_currency_id'] ?? null);
-        $maintenanceImage = Attachment::find($values['maintenance']['maintenance_image_id'] ?? null);
 
         if (!isset($values['general'])) {
             $values['general'] = [];
@@ -48,6 +42,18 @@ class Setting extends Model implements HasMedia
         if (!isset($values['maintenance'])) {
             $values['maintenance'] = [];
         }
+
+        if (!isset($values['general']['default_currency_id'])) {
+            $firstCurrency = Currency::first();
+            $values['general']['default_currency_id'] = $firstCurrency ? $firstCurrency->id : 1;
+        }
+
+        $lightLogoImage = Attachment::find($values['general']['light_logo_image_id'] ?? null);
+        $darkLogoImage = Attachment::find($values['general']['dark_logo_image_id'] ?? null);
+        $faviconImage = Attachment::find($values['general']['favicon_image_id'] ?? null);
+        $tinyImage = Attachment::find($values['general']['tiny_logo_image_id'] ?? null);
+        $defaultCurrency = Currency::find($values['general']['default_currency_id']);
+        $maintenanceImage = Attachment::find($values['maintenance']['maintenance_image_id'] ?? null);
 
         $values['general']['light_logo_image'] = $lightLogoImage;
         $values['general']['dark_logo_image'] = $darkLogoImage;
