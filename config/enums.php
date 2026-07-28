@@ -8,6 +8,7 @@ return [
             'quantity',
             'single_price',
             'shipping_cost',
+            'tax',
             'refund_status',
             'subtotal'
         ],

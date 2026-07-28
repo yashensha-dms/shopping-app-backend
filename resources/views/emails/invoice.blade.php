@@ -1,92 +1,36 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <title>{{ $settings['general']['site_title'] }}</title>
 </head>
 <style type="text/css">
-    body{
-        font-family: 'DejaVu Sans', 'Roboto Condensed', sans-serif;
-    }
-    .m-0{
-        margin: 0px;
-    }
-    .p-0{
-        padding: 0px;
-    }
-    .pt-5{
-        padding-top:5px;
-    }
-    .mt-10{
-        margin-top:10px;
-    }
-    .text-center{
-        text-align:center !important;
-    }
-    .w-100{
-        width: 100%;
-    }
-    .w-50{
-        width:50%;
-    }
-    .w-85{
-        width:85%;
-    }
-    .w-15{
-        width:15%;
-    }
-    .logo img{
-        width:200px;
-        height:60px;
-    }
-    .gray-color{
-        color:#52a750a4;
-    }
-    .text-bold{
-        font-weight: bold;
-    }
-    .border{
-        border:1px solid black;
-    }
-    table tr,th,td{
-        border: 1px solid #d2d2d2;
-        border-collapse:collapse;
-        padding:7px 8px;
-    }
-    table tr th{
-        background: #F4F4F4;
-        font-size:15px;
-    }
-    table tr td{
-        font-size:13px;
-    }
-    table{
-        border-collapse:collapse;
-    }
-    .box-text p{
-        line-height:10px;
-    }
-    .float-left{
-        float:left;
-    }
-    .total-part{
-        font-size:16px;
-        line-height:12px;
-    }
-    .total-right p{
-        padding-right:20px;
-    }
+    body{ font-family: 'DejaVu Sans', 'Roboto Condensed', sans-serif; }
+    .m-0{ margin:0px; } .p-0{ padding:0px; } .pt-5{ padding-top:5px; }
+    .mt-10{ margin-top:10px; } .text-center{ text-align:center !important; }
+    .w-100{ width:100%; } .w-50{ width:50%; } .w-85{ width:85%; } .w-15{ width:15%; }
+    .logo img{ width:200px; height:60px; }
+    .gray-color{ color:#52a750a4; } .text-bold{ font-weight:bold; }
+    table tr,th,td{ border:1px solid #d2d2d2; border-collapse:collapse; padding:7px 8px; }
+    table tr th{ background:#F4F4F4; font-size:15px; }
+    table tr td{ font-size:13px; } table{ border-collapse:collapse; }
+    .box-text p{ line-height:10px; } .float-left{ float:left; }
+    .total-part{ font-size:14px; line-height:14px; }
+    .total-right p{ padding-right:20px; }
+    .label-col{ width:70%; text-align:right; padding-right:10px; }
+    .value-col{ width:30%; text-align:right; font-weight:bold; }
+    .gst-label{ color:#555; font-size:12px; }
 </style>
 <body>
 <div class="head-title">
-    <h1 class="text-center m-0 p-0">Invoice</h1>
+    <h1 class="text-center m-0 p-0">Tax Invoice</h1>
 </div>
 <div class="add-detail mt-10">
     <div class="w-50 float-left mt-10">
-        <p class="m-0 pt-5 text-bold w-100">Order Id - <span class="gray-color">{{$orders->order_number}}</span></p>
+        <p class="m-0 pt-5 text-bold w-100">Order No - <span class="gray-color">{{$orders->order_number}}</span></p>
         <p class="m-0 pt-5 text-bold w-100">Order Date - <span class="gray-color">{{$orders->created_at->format("d/m/Y")}}</span></p>
         <p class="m-0 pt-5 text-bold w-100">Payment Method - <span class="gray-color">{{$orders->payment_method}}</span></p>
     </div>
-    <div style="clear: both;"></div>
+    <div style="clear:both;"></div>
 </div>
 <div class="table-section bill-tbl w-100 mt-10">
     <table class="table w-100 mt-10">
@@ -119,41 +63,78 @@
 <div class="table-section bill-tbl w-100 mt-10">
     <table class="table w-100 mt-10">
         <tr>
-            <th class="w-50">No</th>
-            <th class="w-50">Product Name</th>
-            <th class="w-50">Price</th>
-            <th class="w-50">Qty</th>
-            <th class="w-50">Subtotal</th>
-            <th class="w-50">Shipping Cost</th>
-            <th class="w-50">Grand Total</th>
+            <th>No</th>
+            <th>Product Name</th>
+            <th>HSN</th>
+            <th>GST%</th>
+            <th>Qty</th>
+            <th>Unit Price (Incl.)</th>
+            <th>Taxable Value</th>
+            <th>GST Amt</th>
+            <th>Shipping</th>
+            <th>Line Total</th>
         </tr>
+        @php
+            $grandTaxableTotal = 0;
+            $grandGstTotal     = 0;
+        @endphp
         @foreach ($orders->products as $no => $product)
+        @php
+            $pivotTax      = $product->pivot->tax ?? 0;
+            $pivotSubtotal = $product->pivot->subtotal ?? 0;
+            $pivotShipping = $product->pivot->shipping_cost ?? 0;
+            $pivotQty      = $product->pivot->quantity ?? 1;
+            $pivotUnitPrice= $product->pivot->single_price ?? 0;
+            $lineTotal     = $pivotSubtotal + $pivotTax + $pivotShipping;
+            $hsnCode       = $product->hsn_code ?? '-';
+            $gstRate       = ($pivotSubtotal > 0)
+                             ? round(($pivotTax / $pivotSubtotal) * 100, 2)
+                             : 0;
+            $grandTaxableTotal += $pivotSubtotal;
+            $grandGstTotal     += $pivotTax;
+        @endphp
         <tr align="center">
             <td>{{++$no}}</td>
-            <td>{{$product->name}}</td>
-            <td>₹ {{$product->pivot->single_price}}</td>
-            <td>{{$product->pivot->quantity}}</td>
-            <td>₹ {{$product->pivot->subtotal}}</td>
-            <td>₹ {{$product->pivot->shipping_cost}}</td>
-            <td>₹ {{$product->pivot->subtotal + $product->pivot->shipping_cost + $product->pivot->tax}}</td>
+            <td align="left">{{$product->name}}</td>
+            <td>{{$hsnCode}}</td>
+            <td>{{$gstRate}}%</td>
+            <td>{{$pivotQty}}</td>
+            <td>&#8377; {{number_format($pivotUnitPrice, 2)}}</td>
+            <td>&#8377; {{number_format($pivotSubtotal, 2)}}</td>
+            <td>&#8377; {{number_format($pivotTax, 2)}}</td>
+            <td>&#8377; {{number_format($pivotShipping, 2)}}</td>
+            <td>&#8377; {{number_format($lineTotal, 2)}}</td>
         </tr>
         @endforeach
         <tr>
-            <td colspan="7">
+            <td colspan="10">
                 <div class="total-part">
-                    <div class="total-left w-85 float-left" align="right">
-                        <p>Sub Total</p>
-                        <p>Tax</p>
-                        <p>Shipping</p>
-                        <p>Total Payable</p>
-                    </div>
-                    <div class="total-right w-15 float-left text-bold" align="right">
-                        <p>₹ {{$orders->amount}}</p>
-                        <p>₹ {{$orders->tax_total}}</p>
-                        <p>₹ {{$orders->shipping_total}}</p>
-                        <p>₹ {{$orders->total}}</p>
-                    </div>
-                    <div style="clear: both;"></div>
+                    <table style="width:100%;border:none;">
+                        <tr>
+                            <td class="label-col gst-label">Taxable Value</td>
+                            <td class="value-col">&#8377; {{number_format($grandTaxableTotal, 2)}}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-col gst-label">CGST</td>
+                            <td class="value-col">&#8377; {{number_format($grandGstTotal / 2, 2)}}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-col gst-label">SGST</td>
+                            <td class="value-col">&#8377; {{number_format($grandGstTotal / 2, 2)}}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-col gst-label">Total GST</td>
+                            <td class="value-col">&#8377; {{number_format($grandGstTotal, 2)}}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-col gst-label">Shipping</td>
+                            <td class="value-col">&#8377; {{number_format($orders->shipping_total ?? 0, 2)}}</td>
+                        </tr>
+                        <tr style="border-top:2px solid #333;">
+                            <td class="label-col text-bold" style="font-size:15px;">Invoice Total</td>
+                            <td class="value-col" style="font-size:15px;">&#8377; {{number_format($orders->total, 2)}}</td>
+                        </tr>
+                    </table>
                 </div>
             </td>
         </tr>

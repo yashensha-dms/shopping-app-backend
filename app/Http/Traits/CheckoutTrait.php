@@ -4,6 +4,7 @@ namespace App\Http\Traits;
 
 use Exception;
 use App\Helpers\Helpers;
+use App\Helpers\GstCalculator;
 use App\Enums\AmountEnum;
 use Illuminate\Http\Request;
 use App\Enums\ShippingRuleEnum;
@@ -69,7 +70,9 @@ trait CheckoutTrait
         $perProductDiscount = 0;
         $perProductShippingCost = 0;
         $singleProductPrice = Helpers::getSalePrice($product);
-        $subTotal = Helpers::getSubTotal($singleProductPrice, $product['quantity']);
+        // inclusiveSubTotal = GST-inclusive line total (price x qty)
+        $inclusiveSubTotal = Helpers::getSubTotal($singleProductPrice, $product['quantity']);
+        $subTotal = $inclusiveSubTotal; // may be reduced by coupon below
 
         if ($settings['general']['min_order_free_shipping'] >= $amount) {
           if ($shippingRules) {
@@ -123,22 +126,29 @@ trait CheckoutTrait
               }
 
               $couponTotalDiscount[] = $perProductDiscount;
+              // Reduce the GST-inclusive line total by the coupon discount
               $subTotal = $subTotal - $perProductDiscount;
             }
           }
         }
 
-        $perProductTax = $this->getTax($product['product_id'], $subTotal);
+        // Extract GST using back-calculation from the (post-coupon) GST-inclusive line total.
+        // taxableSubTotal + perProductTax = $subTotal (the inclusive amount).
+        $gstBreakdown    = $this->getGstBreakdown($product['product_id'], $subTotal);
+        $perProductTax   = $gstBreakdown['gst_amount'];   // extracted GST
+        $taxableSubTotal = $gstBreakdown['taxable_value']; // ex-GST amount stored as subtotal
+
         $tax[] = $perProductTax;
         $perProductCost[] = [
-          'store_id'  =>      Helpers::getStoreIdByProductId($product['product_id']),
-          'product_id' =>     $product['product_id'],
-          'variation_id' =>   $product['variation_id'] ?? null,
-          'tax' =>            $perProductTax,
-          'shipping_cost' =>  $perProductShippingCost,
-          'single_price' =>   $singleProductPrice,
-          'quantity' =>       $product['quantity'],
-          'subtotal' =>       $subTotal,
+          'store_id'     => Helpers::getStoreIdByProductId($product['product_id']),
+          'product_id'   => $product['product_id'],
+          'variation_id' => $product['variation_id'] ?? null,
+          'tax'          => $perProductTax,    // GST extracted from inclusive price
+          'shipping_cost'=> $perProductShippingCost,
+          'single_price' => $singleProductPrice,
+          'quantity'     => $product['quantity'],
+          // subtotal = taxable value (ex-GST); taxable + tax = inclusive line total
+          'subtotal'     => $taxableSubTotal,
         ];
       }
 
@@ -172,13 +182,16 @@ trait CheckoutTrait
         $_item['total'] = [
           'tax_total' => $this->formatDecimal(array_sum($_tax_total)),
           'shipping_total' => $this->formatDecimal(array_sum($_shipping_total)),
-          'sub_total' => $this->formatDecimal(array_sum($_total)),
-          'total' => $this->formatDecimal(array_sum($_shipping_total) + array_sum($_total)),
+          'sub_total' => $this->formatDecimal(array_sum($_total)),  // taxable value (ex-GST)
+          // total = taxable_value + gst + shipping = inclusive_price + shipping
+          // Price to customer is UNCHANGED; GST is extracted, not added on top.
+          'total' => $this->formatDecimal(array_sum($_shipping_total) + array_sum($_total) + array_sum($_tax_total)),
           'convert_point_amount' => $this->formatDecimal($convert_wallet_balance),
           'convert_wallet_balance' => $this->formatDecimal($convert_point_amount),
           'coupon_total_discount' => $this->formatDecimal(array_sum($couponTotalDiscount)),
         ];
 
+        // Track taxable sub-totals per store (used for $subTotal below)
         $filtered_sub_Total[] = array_sum($_total);
         $items['items'][] = $_item;
       }
@@ -194,7 +207,10 @@ trait CheckoutTrait
         $walletBalance = abs($convert_wallet_balance);
       }
 
+      // $subTotal = sum of per-store taxable values (ex-GST), used for GST reporting sub-total.
       $subTotal = array_sum($filtered_sub_Total);
+      // $total starts from getTotalAmount() = GST-inclusive price total.
+      // This ensures the customer's payable amount is NEVER changed by GST extraction.
       $total = $amount;
       $couponDiscount = array_sum($couponTotalDiscount);
 
@@ -270,15 +286,31 @@ trait CheckoutTrait
     }
   }
 
+  /**
+   * Get the GST breakdown for a product's GST-inclusive line total.
+   *
+   * Returns:
+   *   taxable_value = inclusiveLineTotal x 100 / (100 + gstRate)
+   *   gst_amount    = inclusiveLineTotal - taxable_value
+   *
+   * @param  int   $product_id         Product ID
+   * @param  float $inclusiveLineTotal  GST-inclusive line total (after discounts)
+   * @return array{taxable_value: float, gst_amount: float, gst_rate: float}
+   */
+  public function getGstBreakdown(int $product_id, float $inclusiveLineTotal): array
+  {
+    $tax_id  = $this->getTaxId($product_id);
+    $gstRate = $this->getTaxRate($tax_id) ?? 0;
+
+    return GstCalculator::breakdown($inclusiveLineTotal, (float) $gstRate);
+  }
+
+  /**
+   * @deprecated Use getGstBreakdown() instead.
+   * Kept for backward-compatibility with any direct callers.
+   */
   public function getTax($product_id, $subtotal)
   {
-    $tax = 0;
-    $tax_id = $this->getTaxId($product_id);
-    $taxRate = $this->getTaxRate($tax_id);
-    if ($taxRate) {
-      $tax = ($subtotal * $taxRate) / (100 + $taxRate);
-    }
-
-    return  $tax;
+    return $this->getGstBreakdown($product_id, (float) $subtotal)['gst_amount'];
   }
 }

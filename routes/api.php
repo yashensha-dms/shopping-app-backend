@@ -341,6 +341,9 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
   Route::post('tax/deleteAll', 'App\Http\Controllers\TaxController@deleteAll')->middleware('can:tax.destroy');
   Route::put('tax/{id}/{status}', 'App\Http\Controllers\TaxController@status')->middleware('can:tax.edit');
 
+  // GST Report (admin only)
+  Route::get('gst-report', 'App\Http\Controllers\GstReportController@index')->middleware('can:order.index');
+
   // Offer Banner
   Route::apiResource('offer-banner', 'App\Http\Controllers\OfferBannerController',[
     'only' => ['store', 'update', 'destroy'],
