@@ -13,7 +13,7 @@ return [
             'subtotal'
         ],
         'with' => [
-            'products:id,name,product_thumbnail_id',
+            'products:id,name,product_thumbnail_id,tax_id',
             'sub_orders',
             'billing_address',
             'shipping_address',

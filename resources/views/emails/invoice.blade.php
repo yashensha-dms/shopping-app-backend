@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <title>{{ $settings['general']['site_title'] }}</title>
@@ -85,11 +85,27 @@
             $pivotShipping = $product->pivot->shipping_cost ?? 0;
             $pivotQty      = $product->pivot->quantity ?? 1;
             $pivotUnitPrice= $product->pivot->single_price ?? 0;
+            
+            // Fetch product's defined tax rate
+            $gstRate       = (float) ($product->tax->rate ?? 0);
+
+            // If pivot tax is not populated (e.g. legacy orders or pre-save states), back-calculate
+            if ($pivotTax <= 0 && $gstRate > 0) {
+                $actualInclusive = $pivotUnitPrice * $pivotQty;
+                $expectedInclusive = $pivotSubtotal * (1 + $gstRate / 100);
+
+                if (abs($expectedInclusive - $actualInclusive) < 1.0) {
+                    // New order, subtotal is already taxable value
+                    $pivotTax = $actualInclusive - $pivotSubtotal;
+                } else {
+                    // Legacy order, subtotal is GST-inclusive
+                    $pivotTax = ($pivotSubtotal * $gstRate) / (100 + $gstRate);
+                    $pivotSubtotal = $pivotSubtotal - $pivotTax;
+                }
+            }
+
             $lineTotal     = $pivotSubtotal + $pivotTax + $pivotShipping;
             $hsnCode       = $product->hsn_code ?? '-';
-            $gstRate       = ($pivotSubtotal > 0)
-                             ? round(($pivotTax / $pivotSubtotal) * 100, 2)
-                             : 0;
             $grandTaxableTotal += $pivotSubtotal;
             $grandGstTotal     += $pivotTax;
         @endphp

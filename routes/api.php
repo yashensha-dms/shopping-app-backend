@@ -344,6 +344,10 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
   // GST Report (admin only)
   Route::get('gst-report', 'App\Http\Controllers\GstReportController@index')->middleware('can:order.index');
 
+  // Network Printer (WiFi/LAN thermal printer via raw TCP)
+  Route::post('printer/print', 'App\Http\Controllers\NetworkPrinterController@print');
+  Route::get('printer/ping',  'App\Http\Controllers\NetworkPrinterController@ping');
+
   // Offer Banner
   Route::apiResource('offer-banner', 'App\Http\Controllers\OfferBannerController',[
     'only' => ['store', 'update', 'destroy'],

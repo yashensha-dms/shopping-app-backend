@@ -24,6 +24,7 @@ class OrderProductPivot extends Pivot
         'quantity',
         'single_price',
         'shipping_cost',
+        'tax',
         'refund_status',
         'subtotal'
     ];
@@ -35,6 +36,7 @@ class OrderProductPivot extends Pivot
         'quantity' => 'integer',
         'single_price' => 'integer',
         'shipping_cost' => 'integer',
+        'tax' => 'float',
         'subtotal' => 'float',
     ];
 }
