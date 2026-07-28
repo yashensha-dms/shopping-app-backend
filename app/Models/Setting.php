@@ -34,7 +34,7 @@ class Setting extends Model implements HasMedia
 
     public function getValuesAttribute($value)
     {
-        $values = json_decode($value, true) ?: [];
+        $values = is_array($value) ? $value : (json_decode($value, true) ?: []);
         $lightLogoImage = Attachment::find($values['general']['light_logo_image_id'] ?? null);
         $darkLogoImage = Attachment::find($values['general']['dark_logo_image_id'] ?? null);
         $faviconImage = Attachment::find($values['general']['favicon_image_id'] ?? null);
@@ -61,6 +61,6 @@ class Setting extends Model implements HasMedia
 
     public function setValuesAttribute($value)
     {
-        $this->attributes['values'] = json_encode($value);
+        $this->attributes['values'] = is_array($value) ? json_encode($value) : $value;
     }
 }
