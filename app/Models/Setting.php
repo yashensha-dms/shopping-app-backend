@@ -42,6 +42,15 @@ class Setting extends Model implements HasMedia
         if (!isset($values['maintenance'])) {
             $values['maintenance'] = [];
         }
+        if (!isset($values['delivery'])) {
+            $values['delivery'] = [];
+        }
+        if (!isset($values['delivery']['default_delivery'])) {
+            $values['delivery']['default_delivery'] = 1;
+        }
+        if (!isset($values['delivery']['same_day_intervals'])) {
+            $values['delivery']['same_day_intervals'] = [];
+        }
 
         if (!isset($values['general']['default_currency_id'])) {
             $firstCurrency = Currency::first();
