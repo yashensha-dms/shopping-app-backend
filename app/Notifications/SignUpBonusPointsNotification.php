@@ -40,7 +40,7 @@ class SignUpBonusPointsNotification extends Notification
         return (new MailMessage)
             ->subject('Congratulations on Your Sign-Up Bonus!')
             ->greeting('Hello ' . $this->user->name . ',')
-            ->line('Woohoo! You\'ve just received ' . $settings['wallet_points']['signup_points'] . ' bonus points as a thank you for joining us!')
+            ->line('Woohoo! You\'ve just received ' . ($settings['wallet_points']['signup_points'] ?? 0) . ' bonus points as a thank you for joining us!')
             ->line('Keep exploring, shopping, and enjoying our platform. Your points are just the beginning of a fantastic experience!')
             ->line('Thank you for becoming a part of our platform. Here\'s to exciting times ahead!')
             ->line('Enjoy your rewards!');
@@ -57,7 +57,7 @@ class SignUpBonusPointsNotification extends Notification
         $settings = Helpers::getSettings();
         return [
             'title' => "Wohoo!, You received the SignUp Bonus",
-            'message' => "Welcome aboard! You've earned a signup bonus of {$settings['wallet_points']['signup_points']} credits. Enjoy your rewards!",
+            'message' => "Welcome aboard! You've earned a signup bonus of " . ($settings['wallet_points']['signup_points'] ?? 0) . " credits. Enjoy your rewards!",
             'type' => "points"
         ];
     }

@@ -211,7 +211,7 @@ class AuthController extends Controller
             $user->assignRole(RoleEnum::CONSUMER);
             if (Helpers::pointIsEnable()) {
                 $settings = Helpers::getSettings();
-                $signUpPoints = $settings['wallet_points']['signup_points'];
+                $signUpPoints = $settings['wallet_points']['signup_points'] ?? 0;
                 $this->creditPoints($user->id, $signUpPoints, WalletPointsDetail::SIGN_UP_BONUS);
                 event(new SignUpBonusPointsEvent($user));
                 $user->point;
@@ -473,7 +473,7 @@ class AuthController extends Controller
 
                 if (Helpers::pointIsEnable()) {
                     $settings = Helpers::getSettings();
-                    $signUpPoints = $settings['wallet_points']['signup_points'];
+                    $signUpPoints = $settings['wallet_points']['signup_points'] ?? 0;
                     $this->creditPoints($user->id, $signUpPoints, WalletPointsDetail::SIGN_UP_BONUS);
                     event(new SignUpBonusPointsEvent($user));
                 }

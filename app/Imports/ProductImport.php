@@ -263,7 +263,7 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnE
                     $store_id = Helpers::getCurrentVendorStoreId();
                 }
 
-                $isAutoApprove = $settings['activation']['product_auto_approve'];
+                $isAutoApprove = $settings['activation']['product_auto_approve'] ?? true;
             }
 
             if(isset($row['variations']) && !empty($row['variations']) && $row['type'] == 'classified') {

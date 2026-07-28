@@ -103,7 +103,7 @@ class WithdrawRequestRepository extends BaseRepository
 
             $vendorWallet = $this->getVendorWallet($vendor_id);
             $vendorBalance = $vendorWallet->balance;
-            $minWithdrawAmount = $settings['vendor_commissions']['min_withdraw_amount'];
+            $minWithdrawAmount = $settings['vendor_commissions']['min_withdraw_amount'] ?? 0;
 
             if ($minWithdrawAmount > $request->amount) {
                 throw new Exception("Make sure your requested amount is at least $minWithdrawAmount.", 400);

@@ -250,9 +250,9 @@ class OrderRepository extends BaseRepository
 
     public function getRewardPoints($total)
     {
-        $minPerOrderAmount = $this->settings['wallet_points']['min_per_order_amount'];
-        $rewardPerOrderAmount = $this->settings['wallet_points']['reward_per_order_amount'];
-        if ($total >= $minPerOrderAmount) {
+        $minPerOrderAmount = $this->settings['wallet_points']['min_per_order_amount'] ?? 0;
+        $rewardPerOrderAmount = $this->settings['wallet_points']['reward_per_order_amount'] ?? 0;
+        if ($minPerOrderAmount > 0 && $total >= $minPerOrderAmount) {
             $rewardPoints = ($total/$minPerOrderAmount)*$rewardPerOrderAmount;
             return $rewardPoints;
         }
@@ -260,7 +260,7 @@ class OrderRepository extends BaseRepository
 
     public function getWalletRatio()
     {
-        $walletRatio = $this->settings['general']['wallet_currency_ratio'];
+        $walletRatio = $this->settings['general']['wallet_currency_ratio'] ?? 1;
         return $walletRatio <= 0 ? 1 : $walletRatio;
     }
 

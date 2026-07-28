@@ -98,7 +98,7 @@ class ProductRepository extends BaseRepository
                     throw new Exception('The multi-vendor feature is currently deactivated.', 403);
                 }
 
-                $isAutoApprove = $settings['activation']['product_auto_approve'];
+                $isAutoApprove = $settings['activation']['product_auto_approve'] ?? true;
             }
 
             if (isset($request['variations']) && !empty($request['variations']) && $request->type == 'classified') {

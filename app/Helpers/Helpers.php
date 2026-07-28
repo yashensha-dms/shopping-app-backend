@@ -285,25 +285,25 @@ class Helpers
   public static function pointIsEnable()
   {
     $settings = self::getSettings();
-    return $settings['activation']['point_enable'];
+    return $settings['activation']['point_enable'] ?? false;
   }
-
+ 
   public static function walletIsEnable()
   {
     $settings = self::getSettings();
-    return $settings['activation']['wallet_enable'];
+    return $settings['activation']['wallet_enable'] ?? false;
   }
-
+ 
   public static function isMultiVendorEnable()
   {
     $settings = self::getSettings();
-    return $settings['activation']['multivendor'];
+    return $settings['activation']['multivendor'] ?? false;
   }
-
+ 
   public static function couponIsEnable()
   {
     $settings = self::getSettings();
-    return $settings['activation']['coupon_enable'];
+    return $settings['activation']['coupon_enable'] ?? false;
   }
 
   public static function getCategoryCommissionRate($categories)

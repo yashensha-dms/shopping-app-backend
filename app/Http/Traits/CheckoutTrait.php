@@ -21,7 +21,7 @@ trait CheckoutTrait
       $settings = Helpers::getSettings();
       $amount = Helpers::getTotalAmount($request->products);
       if ($this->isActivePaymentMethod($request->payment_method, $amount)) {
-        $minOrderAmount = $settings['general']['min_order_amount'];
+        $minOrderAmount = $settings['general']['min_order_amount'] ?? 0;
         $products = $this->getUniqueProducts($request->products);
         $request->merge(['products' => $products]);
         if ($amount < $minOrderAmount) {
@@ -74,7 +74,8 @@ trait CheckoutTrait
         $inclusiveSubTotal = Helpers::getSubTotal($singleProductPrice, $product['quantity']);
         $subTotal = $inclusiveSubTotal; // may be reduced by coupon below
 
-        if ($settings['general']['min_order_free_shipping'] >= $amount) {
+        $minOrderFreeShipping = $settings['general']['min_order_free_shipping'] ?? 0;
+        if ($minOrderFreeShipping >= $amount) {
           if ($shippingRules) {
             if ($this->isNotFreeShipping($product['product_id'])) {
               foreach ($shippingRules as $shippingRule) {

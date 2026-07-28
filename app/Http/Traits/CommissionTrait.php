@@ -53,7 +53,9 @@ trait CommissionTrait {
     try {
 
       $settings = Helpers::getSettings();
-      if ($settings['vendor_commissions']['status'] && $settings['activation']['multivendor']) {
+      $vendorCommissionsStatus = $settings['vendor_commissions']['status'] ?? false;
+      $multivendor = $settings['activation']['multivendor'] ?? false;
+      if ($vendorCommissionsStatus && $multivendor) {
         if (($order->payment_status == PaymentStatus::COMPLETED) &&
           $order->order_status->name == OrderEnum::DELIVERED) {
             if ($order->sub_orders->isEmpty()) {
@@ -64,14 +66,15 @@ trait CommissionTrait {
             $commissions = [];
             foreach ($sub_order->products as $product) {
               $subTotal = $product->pivot->subtotal;
-              if ($settings['vendor_commissions']['is_category_based_commission']) {
+              $isCategoryBased = $settings['vendor_commissions']['is_category_based_commission'] ?? false;
+              if ($isCategoryBased) {
                 $commissionRate = (float) max(($product->categories->pluck('commission_rate')->toArray()));
                 if (!$commissionRate) {
-                  $commissionRate = $settings['vendor_commissions']['default_commission_rate'];
+                  $commissionRate = $settings['vendor_commissions']['default_commission_rate'] ?? 0;
                 }
 
               } else {
-                $commissionRate = (float) $settings['vendor_commissions']['default_commission_rate'];
+                $commissionRate = (float) ($settings['vendor_commissions']['default_commission_rate'] ?? 0);
               }
 
               $commissions['admin'][] = $this->getAdminCommission($subTotal, $commissionRate);

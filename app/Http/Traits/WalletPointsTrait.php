@@ -160,7 +160,7 @@ trait WalletPointsTrait
   public static function getPointRatio()
   {
     $settings = Helpers::getSettings();
-    $pointRatio = $settings['wallet_points']['point_currency_ratio'];
+    $pointRatio = $settings['wallet_points']['point_currency_ratio'] ?? 1;
     return $pointRatio == 0 ? 1 : $pointRatio;
   }
 

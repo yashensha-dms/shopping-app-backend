@@ -56,7 +56,7 @@ class CommissionHistoryRepository extends BaseRepository
         try {
 
             $settings = Helpers::getSettings();
-            $refundableDays = $settings['refund']['refundable_days'];
+            $refundableDays = $settings['refund']['refundable_days'] ?? 0;
             $refundableDate = now()->subDays($refundableDays)->toDateString();
             $orderStatusId = Helpers::getOrderStatusIdByName(OrderEnum::DELIVERED);
             $orders = Order::where('payment_status', PaymentStatus::COMPLETED)

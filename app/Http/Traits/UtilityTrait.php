@@ -47,7 +47,8 @@ trait UtilityTrait
       }
 
       if ($method == PaymentMethod::PHONEPE) {
-        if ($settings['payment_methods'][PaymentMethod::PHONEPE]['sandbox_mode']) {
+        $phonepeSettings = $settings['payment_methods'][PaymentMethod::PHONEPE] ?? [];
+        if ($phonepeSettings['sandbox_mode'] ?? false) {
           if (Helpers::getDefaultCurrencyCode() != 'INR') {
             $amount = Helpers::convertToINR($amount);
           }

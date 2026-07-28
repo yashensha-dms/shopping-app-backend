@@ -78,7 +78,7 @@ class RefundRepository extends BaseRepository
 
     public function isRefundEnable($settings)
     {
-        return $settings['refund']['status'];
+        return $settings['refund']['status'] ?? false;
     }
 
     public function isProductCanReturn($product_id)
@@ -109,7 +109,7 @@ class RefundRepository extends BaseRepository
                  $order = Order::findOrFail($request->order_id);
                 if ($order) {
                     if ($this->verifyStatus($order)) {
-                        if ($this->verifyDeliveryDays($order, $settings['refund']['refundable_days'])) {
+                        if ($this->verifyDeliveryDays($order, $settings['refund']['refundable_days'] ?? 0)) {
                             if ($this->isNotAlreadyRequest($consumer_id, $request->product_id, $request->order_id)) {
                                 if ($this->verifyPaymentType($consumer_id, $request->payment_type)) {
                                     return true;

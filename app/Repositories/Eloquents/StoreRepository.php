@@ -61,7 +61,8 @@ class StoreRepository extends BaseRepository
         try {
 
             $settings = Helpers::getSettings();
-            if ($settings['activation']['multivendor']) {
+            $multivendor = $settings['activation']['multivendor'] ?? false;
+            if ($multivendor) {
                 $user = $this->user->create([
                     'name'     => $request->name,
                     'email'    => $request->email,
@@ -90,7 +91,7 @@ class StoreRepository extends BaseRepository
                     'hide_vendor_phone' => $request->hide_vendor_phone,
                     'vendor_id' => $user->id,
                     'status' => $request->status,
-                    'is_approved' => $settings['activation']['store_auto_approve'],
+                    'is_approved' => $settings['activation']['store_auto_approve'] ?? true,
                 ]);
 
                 $store->vendor->vendor_wallet()->create();
