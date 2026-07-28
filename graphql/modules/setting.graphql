@@ -80,8 +80,9 @@ type EmailSettings {
 
 type DeliverySettings {
     default_delivery: Int
+    same_day_delivery: Boolean
     default:DefaultDeliverySettings
-    same_day:[SameDayDeliverySettings]
+    same_day:SameDayDeliverySettings
     same_day_intervals:[SameDayDeliveryIntervalsSettings]
 }
 
