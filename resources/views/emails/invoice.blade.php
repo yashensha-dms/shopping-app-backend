@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>{{ $settings['general']['site_title'] }}</title>
+    <title>{{ $settings['general']['site_title'] ?? 'Invoice' }}</title>
 </head>
 <style type="text/css">
     body{ font-family: 'DejaVu Sans', 'Roboto Condensed', sans-serif; }
