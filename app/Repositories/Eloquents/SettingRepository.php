@@ -81,48 +81,46 @@ class SettingRepository extends BaseRepository
     public function env($value)
     {
         try {
-
             if (isset($value['email'])) {
                 DotenvEditor::setKeys([
-                    'MAIL_MAILER' => $value['email']["mail_mailer"],
-                    'MAIL_HOST' => $value['email']["mail_host"],
-                    'MAIL_PORT' => $value['email']["mail_port"],
-                    'MAIL_USERNAME' => $value['email']["mail_username"],
-                    'MAIL_PASSWORD' => $value['email']["mail_password"],
-                    'MAIL_ENCRYPTION' => $value['email']["mail_encryption"],
-                    'MAIL_FROM_ADDRESS' => $value['email']["mail_from_address"],
-                    'MAIL_FROM_NAME' => $value['email']["mail_from_name"],
-                    'MAILGUN_DOMAIN' => $value['email']["mailgun_domain"],
-                    'MAILGUN_SECRET' => $value['email']["mailgun_secret"],
+                    'MAIL_MAILER' => $value['email']["mail_mailer"] ?? null,
+                    'MAIL_HOST' => $value['email']["mail_host"] ?? null,
+                    'MAIL_PORT' => $value['email']["mail_port"] ?? null,
+                    'MAIL_USERNAME' => $value['email']["mail_username"] ?? null,
+                    'MAIL_PASSWORD' => $value['email']["mail_password"] ?? null,
+                    'MAIL_ENCRYPTION' => $value['email']["mail_encryption"] ?? null,
+                    'MAIL_FROM_ADDRESS' => $value['email']["mail_from_address"] ?? null,
+                    'MAIL_FROM_NAME' => $value['email']["mail_from_name"] ?? null,
+                    'MAILGUN_DOMAIN' => $value['email']["mailgun_domain"] ?? null,
+                    'MAILGUN_SECRET' => $value['email']["mailgun_secret"] ?? null,
                 ]);
 
                 DotenvEditor::save();
             }
 
             if (isset($value['payment_methods'])) {
-                $paypal_mode = $value['payment_methods']['paypal']["sandbox_mode"]? 'sandbox' : 'live';
+                $paypal_mode = ($value['payment_methods']['paypal']["sandbox_mode"] ?? null) ? 'sandbox' : 'live';
                 DotenvEditor::setKeys([
                     'PAYPAL_MODE' =>  $paypal_mode,
-                    'PAYPAL_CLIENT_ID' => $value['payment_methods']['paypal']["client_id"],
-                    'PAYPAL_CLIENT_SECRET' => $value['payment_methods']['paypal']["client_secret"],
-                    'STRIPE_API_KEY' => $value['payment_methods']['stripe']["key"],
-                    'STRIPE_SECRET_KEY' => $value['payment_methods']['stripe']["secret"],
-                    'RAZORPAY_KEY' => $value['payment_methods']['razorpay']["key"],
-                    'RAZORPAY_SECRET' => $value['payment_methods']['razorpay']["secret"],
-                    'PHONEPE_MERCHANT_ID' => $value['payment_methods']['phonepe']["merchant_id"],
-                    'PHONEPE_SALT_KEY' => $value['payment_methods']['phonepe']["salt_key"] ,
-                    'PHONEPE_SALT_INDEX' => $value['payment_methods']['phonepe']["salt_index"],
-                    'INSTAMOJO_SANDBOX_MODE' => $value['payment_methods']['instamojo']["sandbox_mode"],
-                    'INSTAMOJO_CLIENT_ID' => $value['payment_methods']['instamojo']["client_id"],
-                    'INSTAMOJO_CLIENT_SECRET' => $value['payment_methods']['instamojo']["client_secret"],
-                    'INSTAMOJO_SALT_KEY' => $value['payment_methods']['instamojo']["salt_key"],
+                    'PAYPAL_CLIENT_ID' => $value['payment_methods']['paypal']["client_id"] ?? null,
+                    'PAYPAL_CLIENT_SECRET' => $value['payment_methods']['paypal']["client_secret"] ?? null,
+                    'STRIPE_API_KEY' => $value['payment_methods']['stripe']["key"] ?? null,
+                    'STRIPE_SECRET_KEY' => $value['payment_methods']['stripe']["secret"] ?? null,
+                    'RAZORPAY_KEY' => $value['payment_methods']['razorpay']["key"] ?? null,
+                    'RAZORPAY_SECRET' => $value['payment_methods']['razorpay']["secret"] ?? null,
+                    'PHONEPE_MERCHANT_ID' => $value['payment_methods']['phonepe']["merchant_id"] ?? null,
+                    'PHONEPE_SALT_KEY' => $value['payment_methods']['phonepe']["salt_key"] ?? null,
+                    'PHONEPE_SALT_INDEX' => $value['payment_methods']['phonepe']["salt_index"] ?? null,
+                    'INSTAMOJO_SANDBOX_MODE' => $value['payment_methods']['instamojo']["sandbox_mode"] ?? null,
+                    'INSTAMOJO_CLIENT_ID' => $value['payment_methods']['instamojo']["client_id"] ?? null,
+                    'INSTAMOJO_CLIENT_SECRET' => $value['payment_methods']['instamojo']["client_secret"] ?? null,
+                    'INSTAMOJO_SALT_KEY' => $value['payment_methods']['instamojo']["salt_key"] ?? null,
                 ]);
 
                 DotenvEditor::save();
             }
 
         } catch (Exception $e) {
-
             DB::rollback();
             throw new ExceptionHandler($e->getMessage(), $e->getCode());
         }
