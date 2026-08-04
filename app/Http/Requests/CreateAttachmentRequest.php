@@ -27,9 +27,9 @@ class CreateAttachmentRequest extends FormRequest
     public function rules()
     {
         return [
-            'file' => ['nullable','image','mimes:jpeg,jpg,png,gif,svg,webp','max:10240'],
+            'file' => ['nullable','image','mimes:jpeg,jpg,png,gif,svg,webp','max:3072'],
             'attachments' => ['nullable','array'],
-            'attachments.*'  => ['image','mimes:jpeg,jpg,png,gif,svg,webp','max:10240'],
+            'attachments.*'  => ['image','mimes:jpeg,jpg,png,gif,svg,webp','max:3072'],
             'url' => ['nullable', 'url'],
             'name' => ['nullable', 'string'],
         ];
