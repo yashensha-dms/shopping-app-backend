@@ -94,22 +94,24 @@ class PhonePe {
     try {
 
       $transaction_id = uniqid();
-      $merchantId = env('PHONEPE_MERCHANT_ID', env('PHONEPE_CLIENT_ID'));
+      $merchantId = trim((string)env('PHONEPE_MERCHANT_ID', env('PHONEPE_CLIENT_ID')));
 
       $intent = [
         'merchantId' => $merchantId,
         'merchantTransactionId' => $transaction_id,
         'merchantUserId' => (string)($order?->consumer_id ?? 'GUEST'),
-        'merchantOrderId' => (string)$order->order_number,
         'amount' => (int)round(Helpers::convertToINR($order?->total) * 100),
         'redirectUrl' => $request->return_url . '/' . $order->order_number,
+        'redirectMode' => 'REDIRECT',
         'callbackUrl' => $request->cancel_url . '/' . $order->order_number,
-        'mobileNumber' => (string)($order?->consumer?->phone ?? ''),
-        'redirectMode' => 'POST',
         'paymentInstrument' => [
           'type' => 'PAY_PAGE'
         ]
       ];
+
+      if (!empty($order?->consumer?->phone)) {
+        $intent['mobileNumber'] = (string)$order->consumer->phone;
+      }
 
       $payloadMain = base64_encode(json_encode($intent));
       $token = self::getAccessToken();
@@ -127,7 +129,7 @@ class PhonePe {
         // Legacy v1 SHA256 Checksum Header Fallback
         $string = $payloadMain . '/pg/v1/pay' . env('PHONEPE_SALT_KEY');
         $sha256 = hash('sha256', $string);
-        $x_header = $sha256 . '###' . env('PHONEPE_SALT_INDEX');
+        $x_header = $sha256 . '###' . env('PHONEPE_SALT_INDEX', '1');
         $headers[] = "X-VERIFY: " . $x_header;
       }
 
@@ -155,7 +157,7 @@ class PhonePe {
       } else {
         $res = json_decode($response);
         if (isset($res->success) && ($res->success == '1' || $res->success === true)) {
-          $paymentUrl = $res?->data?->instrumentResponse?->redirectInfo->url;
+          $paymentUrl = $res?->data?->instrumentResponse?->redirectInfo?->url ?? $res?->data?->redirectUrl;
           if (!self::verifyOrderTransaction($order?->id, $transaction_id)) {
             self::storeOrderTransaction($order, $transaction_id, $request->payment_method);
           }
@@ -169,9 +171,10 @@ class PhonePe {
         } else {
           $msg = $res->message ?? 'PhonePe initiation failed';
           \Illuminate\Support\Facades\Log::error("PhonePe Payment Initiation Failed", [
-            'response' => $response,
-            'decoded' => $res,
+            'raw_response' => $response,
+            'payload' => $intent,
             'merchantId' => $merchantId,
+            'has_token' => !empty($token),
           ]);
           throw new Exception($msg, 400);
         }
