@@ -79,6 +79,13 @@ class PhonePe {
       return $res['access_token'];
     }
 
+    \Illuminate\Support\Facades\Log::error("PhonePe OAuth Failed to get access_token", [
+      'url' => $url,
+      'response' => $response,
+      'decoded' => $res,
+      'clientId' => $clientId
+    ]);
+
     return null;
   }
 
