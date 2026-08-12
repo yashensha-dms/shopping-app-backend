@@ -69,7 +69,8 @@ class PhonePe {
     curl_close($curl);
 
     if ($err) {
-      throw new Exception("PhonePe OAuth Error: " . $err, 500);
+      \Illuminate\Support\Facades\Log::error("PhonePe OAuth Curl Error: " . $err);
+      return null;
     }
 
     $res = json_decode($response, true);
@@ -96,14 +97,27 @@ class PhonePe {
       $transaction_id = uniqid();
       $merchantId = trim((string)env('PHONEPE_MERCHANT_ID', env('PHONEPE_CLIENT_ID')));
 
+      $baseUrl = config('app.url', 'https://mstore.primeads.ai');
+
+      $redirectUrl = !empty($request->return_url) ? $request->return_url . '/' . $order->order_number : $baseUrl . '/account/order/details/' . $order->order_number;
+      $callbackUrl = !empty($request->cancel_url) ? $request->cancel_url . '/' . $order->order_number : $baseUrl . '/account/order/details/' . $order->order_number;
+
+      // Ensure valid absolute HTTP/HTTPS URLs
+      if (!preg_match("~^(?:f|ht)tps?://~i", $redirectUrl)) {
+        $redirectUrl = rtrim($baseUrl, '/') . '/' . ltrim($redirectUrl, '/');
+      }
+      if (!preg_match("~^(?:f|ht)tps?://~i", $callbackUrl)) {
+        $callbackUrl = rtrim($baseUrl, '/') . '/' . ltrim($callbackUrl, '/');
+      }
+
       $intent = [
         'merchantId' => $merchantId,
         'merchantTransactionId' => $transaction_id,
         'merchantUserId' => (string)($order?->consumer_id ?? 'GUEST'),
         'amount' => (int)round(Helpers::convertToINR($order?->total) * 100),
-        'redirectUrl' => $request->return_url . '/' . $order->order_number,
+        'redirectUrl' => $redirectUrl,
         'redirectMode' => 'REDIRECT',
-        'callbackUrl' => $request->cancel_url . '/' . $order->order_number,
+        'callbackUrl' => $callbackUrl,
         'paymentInstrument' => [
           'type' => 'PAY_PAGE'
         ]
@@ -121,15 +135,18 @@ class PhonePe {
         "accept: application/json"
       ];
 
+      $saltKey = env('PHONEPE_SALT_KEY', env('PHONEPE_CLIENT_SECRET'));
+      $saltIndex = env('PHONEPE_SALT_INDEX', '1');
+
       if ($token) {
         // PhonePe PG v2 OAuth Header
         $headers[] = "Authorization: Bearer " . $token;
         $headers[] = "X-MERCHANT-ID: " . $merchantId;
       } else {
-        // Legacy v1 SHA256 Checksum Header Fallback
-        $string = $payloadMain . '/pg/v1/pay' . env('PHONEPE_SALT_KEY');
+        // Legacy v1 SHA256 Checksum Header Fallback (using Client Secret as Salt Key if no Salt Key)
+        $string = $payloadMain . '/pg/v1/pay' . $saltKey;
         $sha256 = hash('sha256', $string);
-        $x_header = $sha256 . '###' . env('PHONEPE_SALT_INDEX', '1');
+        $x_header = $sha256 . '###' . $saltIndex;
         $headers[] = "X-VERIFY: " . $x_header;
       }
 
