@@ -43,7 +43,10 @@ class PhonePe {
       return Cache::get($cacheKey);
     }
 
-    $url = self::getPaymentUrl() . '/v1/oauth/token';
+    $url = 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
+    if (env('PHONEPE_SANDBOX_MODE')) {
+      $url = 'https://api-preprod.phonepe.com/apis/identity-manager/v1/oauth/token';
+    }
     $payload = http_build_query([
       'grant_type' => 'client_credentials',
       'client_id' => $clientId,
