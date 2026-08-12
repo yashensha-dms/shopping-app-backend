@@ -11,83 +11,78 @@ use App\Http\Traits\TransactionsTrait;
 use App\GraphQL\Exceptions\ExceptionHandler;
 use Illuminate\Support\Facades\Cache;
 
-class PhonePe {
+class PhonePe
+{
+  use PaymentTrait, TransactionsTrait;
 
-  use TransactionsTrait, PaymentTrait;
-
-  public static function getPaymentUrl()
+  protected static function getPaymentUrl(): string
   {
-    $payment_base_url = 'https://api.phonepe.com/apis/hermes';
     if (env('PHONEPE_SANDBOX_MODE')) {
-      $payment_base_url = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+      return 'https://api-preprod.phonepe.com/apis/hermes';
     }
-
-    return $payment_base_url;
+    return 'https://api.phonepe.com/apis/hermes';
   }
 
   /**
-   * Fetch PhonePe OAuth v2 Token if Client ID & Secret are configured
+   * Fetch OAuth access token for PhonePe PG v2.
+   * Caches for 55 minutes (tokens expire in 60 min).
    */
-  public static function getAccessToken()
+  protected static function getAccessToken(): ?string
   {
     $clientId = env('PHONEPE_CLIENT_ID');
     $clientSecret = env('PHONEPE_CLIENT_SECRET');
-    $clientVersion = env('PHONEPE_CLIENT_VERSION', '1');
+    $clientVersion = (int)env('PHONEPE_CLIENT_VERSION', 1);
 
     if (empty($clientId) || empty($clientSecret)) {
       return null;
     }
 
-    $cacheKey = 'phonepe_oauth_token_' . md5($clientId);
+    $cacheKey = 'phonepe_access_token_' . md5($clientId);
     if (Cache::has($cacheKey)) {
       return Cache::get($cacheKey);
     }
 
-    $url = 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
-    if (env('PHONEPE_SANDBOX_MODE')) {
-      $url = 'https://api-preprod.phonepe.com/apis/identity-manager/v1/oauth/token';
-    }
+    $url = env('PHONEPE_SANDBOX_MODE')
+      ? 'https://api-preprod.phonepe.com/apis/identity-manager/v1/oauth/token'
+      : 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
+
     $payload = http_build_query([
-      'grant_type' => 'client_credentials',
-      'client_id' => $clientId,
-      'client_secret' => $clientSecret,
+      'grant_type'     => 'client_credentials',
+      'client_id'      => $clientId,
+      'client_secret'  => $clientSecret,
       'client_version' => $clientVersion,
     ]);
 
     $curl = curl_init();
     curl_setopt_array($curl, [
-      CURLOPT_URL => $url,
+      CURLOPT_URL            => $url,
       CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_TIMEOUT => 30,
-      CURLOPT_CUSTOMREQUEST => "POST",
-      CURLOPT_POSTFIELDS => $payload,
-      CURLOPT_HTTPHEADER => [
+      CURLOPT_TIMEOUT        => 15,
+      CURLOPT_CUSTOMREQUEST  => "POST",
+      CURLOPT_POSTFIELDS     => $payload,
+      CURLOPT_HTTPHEADER     => [
         "Content-Type: application/x-www-form-urlencoded",
-        "accept: application/json"
+        "accept: application/json",
       ],
     ]);
 
     $response = curl_exec($curl);
-    $err = curl_error($curl);
     curl_close($curl);
 
-    if ($err) {
-      \Illuminate\Support\Facades\Log::error("PhonePe OAuth Curl Error: " . $err);
-      return null;
-    }
+    $decoded = json_decode($response, true);
+    $token   = $decoded['access_token'] ?? null;
 
-    $res = json_decode($response, true);
-    if (isset($res['access_token'])) {
-      $expiresIn = $res['expires_in'] ?? 3600;
-      Cache::put($cacheKey, $res['access_token'], now()->addSeconds($expiresIn - 60));
-      return $res['access_token'];
+    if ($token) {
+      $expiresIn = $decoded['expires_in'] ?? 3600;
+      Cache::put($cacheKey, $token, $expiresIn - 300);
+      return $token;
     }
 
     \Illuminate\Support\Facades\Log::error("PhonePe OAuth Failed to get access_token", [
-      'url' => $url,
+      'url'      => $url,
       'response' => $response,
-      'decoded' => $res,
-      'clientId' => $clientId
+      'decoded'  => $decoded,
+      'clientId' => $clientId,
     ]);
 
     return null;
@@ -98,112 +93,174 @@ class PhonePe {
     try {
 
       $transaction_id = uniqid();
-      $merchantId = trim((string)env('PHONEPE_MERCHANT_ID', env('PHONEPE_CLIENT_ID')));
+      $merchantId     = trim((string)env('PHONEPE_MERCHANT_ID', env('PHONEPE_CLIENT_ID')));
+      $baseUrl        = rtrim(config('app.url', 'https://mstore.primeads.ai'), '/');
 
-      $baseUrl = config('app.url', 'https://mstore.primeads.ai');
+      $redirectUrl = !empty($request->return_url)
+        ? $request->return_url . '/' . $order->order_number
+        : $baseUrl . '/account/order/details/' . $order->order_number;
 
-      $redirectUrl = !empty($request->return_url) ? $request->return_url . '/' . $order->order_number : $baseUrl . '/account/order/details/' . $order->order_number;
-      $callbackUrl = !empty($request->cancel_url) ? $request->cancel_url . '/' . $order->order_number : $baseUrl . '/account/order/details/' . $order->order_number;
+      $callbackUrl = !empty($request->cancel_url)
+        ? $request->cancel_url . '/' . $order->order_number
+        : $baseUrl . '/account/order/details/' . $order->order_number;
 
-      // Ensure valid absolute HTTP/HTTPS URLs
       if (!preg_match("~^(?:f|ht)tps?://~i", $redirectUrl)) {
-        $redirectUrl = rtrim($baseUrl, '/') . '/' . ltrim($redirectUrl, '/');
+        $redirectUrl = $baseUrl . '/' . ltrim($redirectUrl, '/');
       }
       if (!preg_match("~^(?:f|ht)tps?://~i", $callbackUrl)) {
-        $callbackUrl = rtrim($baseUrl, '/') . '/' . ltrim($callbackUrl, '/');
+        $callbackUrl = $baseUrl . '/' . ltrim($callbackUrl, '/');
       }
 
-      $intent = [
-        'merchantId' => $merchantId,
-        'merchantTransactionId' => $transaction_id,
-        'merchantUserId' => (string)($order?->consumer_id ?? 'GUEST'),
-        'amount' => (int)round(Helpers::convertToINR($order?->total) * 100),
-        'redirectUrl' => $redirectUrl,
-        'redirectMode' => 'REDIRECT',
-        'callbackUrl' => $callbackUrl,
-        'paymentInstrument' => [
-          'type' => 'PAY_PAGE'
-        ]
-      ];
-
-      if (!empty($order?->consumer?->phone)) {
-        $intent['mobileNumber'] = (string)$order->consumer->phone;
-      }
-
-      $payloadMain = base64_encode(json_encode($intent, JSON_UNESCAPED_SLASHES));
-      $token = self::getAccessToken();
-
-      $headers = [
-        "Content-Type: application/json",
-        "accept: application/json"
-      ];
-
-      $saltKey = env('PHONEPE_SALT_KEY', env('PHONEPE_CLIENT_SECRET'));
-      $saltIndex = env('PHONEPE_SALT_INDEX', '1');
+      $token  = self::getAccessToken();
+      $amount = (int)round(Helpers::convertToINR($order?->total) * 100);
 
       if ($token) {
-        // PhonePe PG v2 OAuth Header
-        $headers[] = "Authorization: Bearer " . $token;
-        $headers[] = "X-MERCHANT-ID: " . $merchantId;
+        // ─────────────────────────────────────────────────────────
+        // PhonePe PG v2 — OAuth "O-Bearer", new checkout endpoint,
+        // direct JSON body (no base64 wrapping)
+        // ─────────────────────────────────────────────────────────
+        $v2Payload = [
+          'merchantOrderId' => $transaction_id,
+          'amount'          => $amount,
+          'expireAfter'     => 1800,
+          'paymentFlow'     => [
+            'type'         => 'PG_CHECKOUT',
+            'message'      => 'Order #' . $order->order_number,
+            'merchantUrls' => [
+              'redirectUrl' => $redirectUrl,
+            ],
+          ],
+        ];
+
+        if (!empty($order?->consumer?->phone)) {
+          $v2Payload['metaInfo']['customerMobile'] = (string)$order->consumer->phone;
+        }
+
+        $payUrl = env('PHONEPE_SANDBOX_MODE')
+          ? 'https://api-preprod.phonepe.com/apis/pg/checkout/v2/pay'
+          : 'https://api.phonepe.com/apis/pg/checkout/v2/pay';
+
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+          CURLOPT_URL            => $payUrl,
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_TIMEOUT        => 30,
+          CURLOPT_CUSTOMREQUEST  => "POST",
+          CURLOPT_POSTFIELDS     => json_encode($v2Payload, JSON_UNESCAPED_SLASHES),
+          CURLOPT_HTTPHEADER     => [
+            "Content-Type: application/json",
+            "accept: application/json",
+            "Authorization: O-Bearer " . $token,
+          ],
+        ]);
+
+        $response = curl_exec($curl);
+        $err      = curl_error($curl);
+        curl_close($curl);
+
+        if (!empty($err)) {
+          throw new Exception($err, 500);
+        }
+
+        $res = json_decode($response, true);
+        \Illuminate\Support\Facades\Log::info("PhonePe v2 Response", ['response' => $response]);
+
+        // v2 success: state=PENDING, redirectUrl/checkoutUrl at root
+        $paymentUrl = $res['redirectUrl'] ?? $res['checkoutUrl'] ?? null;
+
+        if ($paymentUrl) {
+          if (!self::verifyOrderTransaction($order?->id, $transaction_id)) {
+            self::storeOrderTransaction($order, $transaction_id, $request->payment_method);
+          }
+          return [
+            'order_number'   => $order->order_number,
+            'url'            => $paymentUrl,
+            'transaction_id' => $transaction_id,
+            'is_redirect'    => true,
+          ];
+        }
+
+        $msg = $res['message'] ?? ($res['error'] ?? 'PhonePe v2 initiation failed');
+        \Illuminate\Support\Facades\Log::error("PhonePe v2 Initiation Failed", [
+          'raw_response' => $response,
+          'payload'      => $v2Payload,
+          'has_token'    => true,
+        ]);
+        throw new Exception($msg, 400);
+
       } else {
-        // Legacy v1 SHA256 Checksum Header Fallback (using Client Secret as Salt Key if no Salt Key)
-        $string = $payloadMain . '/pg/v1/pay' . $saltKey;
-        $sha256 = hash('sha256', $string);
-        $x_header = $sha256 . '###' . $saltIndex;
-        $headers[] = "X-VERIFY: " . $x_header;
-      }
+        // ─────────────────────────────────────────────────────────
+        // PhonePe v1 Legacy — SHA256 X-VERIFY header, base64 body
+        // ─────────────────────────────────────────────────────────
+        $saltKey   = env('PHONEPE_SALT_KEY', env('PHONEPE_CLIENT_SECRET'));
+        $saltIndex = env('PHONEPE_SALT_INDEX', '1');
 
-      $intentPayload = json_encode(['request' => $payloadMain]);
+        $intent = [
+          'merchantId'            => $merchantId,
+          'merchantTransactionId' => $transaction_id,
+          'merchantUserId'        => (string)($order?->consumer_id ?? 'GUEST'),
+          'amount'                => $amount,
+          'redirectUrl'           => $redirectUrl,
+          'redirectMode'          => 'REDIRECT',
+          'callbackUrl'           => $callbackUrl,
+          'paymentInstrument'     => ['type' => 'PAY_PAGE'],
+        ];
 
-      $curl = curl_init();
-      curl_setopt_array($curl, [
-        CURLOPT_URL => self::getPaymentUrl() . "/pg/v1/pay",
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => "",
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => "POST",
-        CURLOPT_POSTFIELDS => $intentPayload,
-        CURLOPT_HTTPHEADER => $headers,
-      ]);
+        if (!empty($order?->consumer?->phone)) {
+          $intent['mobileNumber'] = (string)$order->consumer->phone;
+        }
 
-      $response = curl_exec($curl);
-      $err = curl_error($curl);
-      curl_close($curl);
+        $payloadMain = base64_encode(json_encode($intent, JSON_UNESCAPED_SLASHES));
+        $sha256      = hash('sha256', $payloadMain . '/pg/v1/pay' . $saltKey);
+        $x_header    = $sha256 . '###' . $saltIndex;
 
-      if (!is_null($err) && !empty($err)) {
-        throw new Exception($err, 500);
-      } else {
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+          CURLOPT_URL            => self::getPaymentUrl() . "/pg/v1/pay",
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_TIMEOUT        => 30,
+          CURLOPT_CUSTOMREQUEST  => "POST",
+          CURLOPT_POSTFIELDS     => json_encode(['request' => $payloadMain]),
+          CURLOPT_HTTPHEADER     => [
+            "Content-Type: application/json",
+            "accept: application/json",
+            "X-VERIFY: " . $x_header,
+          ],
+        ]);
+
+        $response = curl_exec($curl);
+        $err      = curl_error($curl);
+        curl_close($curl);
+
+        if (!empty($err)) {
+          throw new Exception($err, 500);
+        }
+
         $res = json_decode($response);
         if (isset($res->success) && ($res->success == '1' || $res->success === true)) {
           $paymentUrl = $res?->data?->instrumentResponse?->redirectInfo?->url ?? $res?->data?->redirectUrl;
           if (!self::verifyOrderTransaction($order?->id, $transaction_id)) {
             self::storeOrderTransaction($order, $transaction_id, $request->payment_method);
           }
-
           return [
-            'order_number' => $order->order_number,
-            'url' => $paymentUrl,
+            'order_number'   => $order->order_number,
+            'url'            => $paymentUrl,
             'transaction_id' => $transaction_id,
-            'is_redirect' => true,
+            'is_redirect'    => true,
           ];
-        } else {
-          $msg = $res->message ?? 'PhonePe initiation failed';
-          \Illuminate\Support\Facades\Log::error("PhonePe Payment Initiation Failed", [
-            'raw_response' => $response,
-            'payload' => $intent,
-            'merchantId' => $merchantId,
-            'has_token' => !empty($token),
-          ]);
-          throw new Exception($msg, 400);
         }
+
+        $msg = $res->message ?? 'PhonePe initiation failed';
+        \Illuminate\Support\Facades\Log::error("PhonePe v1 Initiation Failed", [
+          'raw_response' => $response,
+          'payload'      => $intent,
+          'merchantId'   => $merchantId,
+        ]);
+        throw new Exception($msg, 400);
       }
 
     } catch (Exception $e) {
-      \Illuminate\Support\Facades\Log::error("PhonePe Exception: " . $e->getMessage(), [
-        'trace' => $e->getTraceAsString()
-      ]);
+      \Illuminate\Support\Facades\Log::error("PhonePe Exception: " . $e->getMessage());
       self::updateOrderPaymentStatus($order, PaymentStatus::FAILED);
       throw new ExceptionHandler($e->getMessage(), $e->getCode() ?: 500);
     }
@@ -212,49 +269,75 @@ class PhonePe {
   public static function status(Order $order, $transaction_id)
   {
     try {
-      $merchantId = env('PHONEPE_MERCHANT_ID', env('PHONEPE_CLIENT_ID'));
-      $token = self::getAccessToken();
-
-      $headers = [
-        "Content-Type: application/json",
-        "X-MERCHANT-ID: " . $merchantId,
-      ];
+      $merchantId = trim((string)env('PHONEPE_MERCHANT_ID', env('PHONEPE_CLIENT_ID')));
+      $token      = self::getAccessToken();
 
       if ($token) {
-        $headers[] = "Authorization: Bearer " . $token;
-      } else {
-        $x_header = hash('sha256', '/pg/v1/status/' . $merchantId . "/{$transaction_id}" . env('PHONEPE_SALT_KEY')) . '###' . env('PHONEPE_SALT_INDEX');
-        $headers[] = "X-VERIFY: " . $x_header;
-      }
+        // v2 order status
+        $statusUrl = env('PHONEPE_SANDBOX_MODE')
+          ? 'https://api-preprod.phonepe.com/apis/pg/checkout/v2/order/' . $transaction_id . '/status'
+          : 'https://api.phonepe.com/apis/pg/checkout/v2/order/' . $transaction_id . '/status';
 
-      $curl = curl_init();
-      curl_setopt_array($curl, [
-        CURLOPT_URL => self::getPaymentUrl() . "/pg/v1/status/" . $merchantId . '/' . $transaction_id,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => "",
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => "GET",
-        CURLOPT_HTTPHEADER => $headers,
-      ]);
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+          CURLOPT_URL            => $statusUrl,
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_TIMEOUT        => 30,
+          CURLOPT_CUSTOMREQUEST  => "GET",
+          CURLOPT_HTTPHEADER     => [
+            "Content-Type: application/json",
+            "Authorization: O-Bearer " . $token,
+          ],
+        ]);
+        $response = curl_exec($curl);
+        $err      = curl_error($curl);
+        curl_close($curl);
 
-      $response = curl_exec($curl);
-      $err = curl_error($curl);
-      curl_close($curl);
+        $resData  = json_decode($response, true);
+        $state    = $resData['state'] ?? '';
+        $payState = $resData['paymentDetails'][0]['state'] ?? '';
 
-      $resData = json_decode($response, true);
-
-      if (isset($resData['code']) && $resData['code'] == "PAYMENT_SUCCESS") {
-        return self::updateOrderPaymentStatus($order, PaymentStatus::COMPLETED);
-      } else if (isset($err) && !empty($err)) {
-        throw new Exception($err, 500);
-      } else if (is_null($resData) || empty($err)) {
+        if ($state === 'COMPLETED' || $payState === 'COMPLETED') {
+          return self::updateOrderPaymentStatus($order, PaymentStatus::COMPLETED);
+        } else if (!empty($err)) {
+          throw new Exception($err, 500);
+        }
         return $order;
-      }
 
-      $msg = $resData['message'] ?? 'Payment status check failed';
-      throw new Exception($msg, 400);
+      } else {
+        // v1 status
+        $saltKey   = env('PHONEPE_SALT_KEY', env('PHONEPE_CLIENT_SECRET'));
+        $saltIndex = env('PHONEPE_SALT_INDEX', '1');
+        $x_header  = hash('sha256', '/pg/v1/status/' . $merchantId . "/{$transaction_id}" . $saltKey) . '###' . $saltIndex;
+
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+          CURLOPT_URL            => self::getPaymentUrl() . "/pg/v1/status/" . $merchantId . '/' . $transaction_id,
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_TIMEOUT        => 30,
+          CURLOPT_CUSTOMREQUEST  => "GET",
+          CURLOPT_HTTPHEADER     => [
+            "Content-Type: application/json",
+            "X-VERIFY: " . $x_header,
+            "X-MERCHANT-ID: " . $merchantId,
+          ],
+        ]);
+
+        $response = curl_exec($curl);
+        $err      = curl_error($curl);
+        curl_close($curl);
+
+        $resData = json_decode($response, true);
+        if (isset($resData['code']) && $resData['code'] == "PAYMENT_SUCCESS") {
+          return self::updateOrderPaymentStatus($order, PaymentStatus::COMPLETED);
+        } else if (!empty($err)) {
+          throw new Exception($err, 500);
+        } else if (is_null($resData)) {
+          return $order;
+        }
+
+        throw new Exception($resData['message'] ?? 'Payment status check failed', 400);
+      }
 
     } catch (Exception $e) {
       self::updateOrderPaymentStatus($order, PaymentStatus::FAILED);
@@ -262,4 +345,3 @@ class PhonePe {
     }
   }
 }
-
