@@ -127,7 +127,7 @@ class PhonePe {
         $intent['mobileNumber'] = (string)$order->consumer->phone;
       }
 
-      $payloadMain = base64_encode(json_encode($intent));
+      $payloadMain = base64_encode(json_encode($intent, JSON_UNESCAPED_SLASHES));
       $token = self::getAccessToken();
 
       $headers = [
