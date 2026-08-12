@@ -161,11 +161,19 @@ class PhonePe {
           ];
         } else {
           $msg = $res->message ?? 'PhonePe initiation failed';
+          \Illuminate\Support\Facades\Log::error("PhonePe Payment Initiation Failed", [
+            'response' => $response,
+            'decoded' => $res,
+            'merchantId' => $merchantId,
+          ]);
           throw new Exception($msg, 400);
         }
       }
 
     } catch (Exception $e) {
+      \Illuminate\Support\Facades\Log::error("PhonePe Exception: " . $e->getMessage(), [
+        'trace' => $e->getTraceAsString()
+      ]);
       self::updateOrderPaymentStatus($order, PaymentStatus::FAILED);
       throw new ExceptionHandler($e->getMessage(), $e->getCode() ?: 500);
     }
