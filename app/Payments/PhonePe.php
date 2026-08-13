@@ -152,20 +152,21 @@ class PhonePe
 
       if ($token) {
         // ─────────────────────────────────────────────────────────────────
-        // PhonePe PG v2 — OAuth "O-Bearer"
+        // PhonePe PG v2 — OAuth "O-Bearer", PG_CHECKOUT hosted page
         //
-        // Mobile App  → paymentFlow.type = UPI_INTENT  → returns intentUrl (upi://)
-        // Web Browser → paymentFlow.type = PG_CHECKOUT → returns hosted checkout page
+        // IMPORTANT: PhonePe v2 only supports PG_CHECKOUT flow.
+        // UPI apps / QR code are shown automatically by PhonePe's hosted
+        // page when opened in the device's NATIVE BROWSER (not WebView).
+        //
+        // Mobile app must use: Linking.openURL(url)  — NOT a WebView.
         // ─────────────────────────────────────────────────────────────────
-
-        $paymentFlowType = $isMobile ? 'UPI_INTENT' : 'PG_CHECKOUT';
 
         $v2Payload = [
           'merchantOrderId' => $transaction_id,
           'amount'          => $amount,
           'expireAfter'     => 1800,
           'paymentFlow'     => [
-            'type'         => $paymentFlowType,
+            'type'         => 'PG_CHECKOUT',
             'message'      => 'Order #' . $order->order_number,
             'merchantUrls' => [
               'redirectUrl' => $redirectUrl,
@@ -204,18 +205,12 @@ class PhonePe
         }
 
         $res = json_decode($response, true);
-        \Illuminate\Support\Facades\Log::info("PhonePe v2 Response", [
-          'flow'     => $paymentFlowType,
-          'mobile'   => $isMobile,
-          'response' => $response,
-        ]);
+        \Illuminate\Support\Facades\Log::info("PhonePe v2 Response", ['response' => $response]);
 
-        // UPI_INTENT → intentUrl is the upi://pay?... deep link
-        // PG_CHECKOUT → redirectUrl/checkoutUrl is the hosted page URL
-        $paymentUrl = $res['intentUrl']   // mobile UPI intent upi://pay?...
-          ?? $res['redirectUrl']          // PG_CHECKOUT hosted page
-          ?? $res['checkoutUrl']          // alternate key
-          ?? null;
+        // Returns the PhonePe hosted checkout page URL.
+        // Mobile app: use Linking.openURL(url) to open in native browser.
+        // UPI apps (GPay, PhonePe, Paytm) will appear automatically there.
+        $paymentUrl = $res['redirectUrl'] ?? $res['checkoutUrl'] ?? null;
 
         if ($paymentUrl) {
           if (!self::verifyOrderTransaction($order?->id, $transaction_id)) {
@@ -226,17 +221,15 @@ class PhonePe
             'url'            => $paymentUrl,
             'transaction_id' => $transaction_id,
             'is_redirect'    => true,
-            'flow'           => strtolower($paymentFlowType), // 'upi_intent' or 'pg_checkout'
+            'flow'           => 'pg_checkout',
           ];
         }
 
         $msg = $res['message'] ?? ($res['error'] ?? 'PhonePe v2 initiation failed');
         \Illuminate\Support\Facades\Log::error("PhonePe v2 Initiation Failed", [
-          'raw_response'   => $response,
-          'payload'        => $v2Payload,
-          'has_token'      => true,
-          'is_mobile'      => $isMobile,
-          'flow'           => $paymentFlowType,
+          'raw_response' => $response,
+          'payload'      => $v2Payload,
+          'has_token'    => true,
         ]);
         throw new Exception($msg, 400);
 
