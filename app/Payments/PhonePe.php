@@ -24,12 +24,47 @@ class PhonePe
   }
 
   /**
+   * Detect if the request is from the mobile app.
+   * The mobile app should pass source=mobile or X-App-Source: mobile header.
+   */
+  protected static function isMobileRequest($request): bool
+  {
+    // Check explicit source/device_type parameter in request body
+    if (!empty($request->source) && strtolower($request->source) === 'mobile') {
+      return true;
+    }
+    if (!empty($request->device_type) && in_array(strtolower($request->device_type), ['android', 'ios', 'mobile'])) {
+      return true;
+    }
+
+    // Check request header X-App-Source
+    $appSource = request()->header('X-App-Source', '');
+    if (strtolower($appSource) === 'mobile') {
+      return true;
+    }
+
+    // Fallback: detect from User-Agent (React Native apps have specific UA)
+    $ua = strtolower(request()->header('User-Agent', ''));
+    if (
+      str_contains($ua, 'okhttp') ||         // Android React Native default
+      str_contains($ua, 'expo') ||           // Expo
+      str_contains($ua, 'cfnetwork') ||      // iOS native
+      str_contains($ua, 'darwinmobile') ||   // iOS native
+      str_contains($ua, 'react-native')      // RN explicit
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Fetch OAuth access token for PhonePe PG v2.
    * Caches for 55 minutes (tokens expire in 60 min).
    */
   protected static function getAccessToken(): ?string
   {
-    $clientId = env('PHONEPE_CLIENT_ID');
+    $clientId     = env('PHONEPE_CLIENT_ID');
     $clientSecret = env('PHONEPE_CLIENT_SECRET');
     $clientVersion = (int)env('PHONEPE_CLIENT_VERSION', 1);
 
@@ -113,18 +148,24 @@ class PhonePe
 
       $token  = self::getAccessToken();
       $amount = (int)round(Helpers::convertToINR($order?->total) * 100);
+      $isMobile = self::isMobileRequest($request);
 
       if ($token) {
-        // ─────────────────────────────────────────────────────────
-        // PhonePe PG v2 — OAuth "O-Bearer", new checkout endpoint,
-        // direct JSON body (no base64 wrapping)
-        // ─────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────
+        // PhonePe PG v2 — OAuth "O-Bearer"
+        //
+        // Mobile App  → paymentFlow.type = UPI_INTENT  → returns intentUrl (upi://)
+        // Web Browser → paymentFlow.type = PG_CHECKOUT → returns hosted checkout page
+        // ─────────────────────────────────────────────────────────────────
+
+        $paymentFlowType = $isMobile ? 'UPI_INTENT' : 'PG_CHECKOUT';
+
         $v2Payload = [
           'merchantOrderId' => $transaction_id,
           'amount'          => $amount,
           'expireAfter'     => 1800,
           'paymentFlow'     => [
-            'type'         => 'PG_CHECKOUT',
+            'type'         => $paymentFlowType,
             'message'      => 'Order #' . $order->order_number,
             'merchantUrls' => [
               'redirectUrl' => $redirectUrl,
@@ -163,10 +204,18 @@ class PhonePe
         }
 
         $res = json_decode($response, true);
-        \Illuminate\Support\Facades\Log::info("PhonePe v2 Response", ['response' => $response]);
+        \Illuminate\Support\Facades\Log::info("PhonePe v2 Response", [
+          'flow'     => $paymentFlowType,
+          'mobile'   => $isMobile,
+          'response' => $response,
+        ]);
 
-        // v2 success: state=PENDING, redirectUrl/checkoutUrl at root
-        $paymentUrl = $res['redirectUrl'] ?? $res['checkoutUrl'] ?? null;
+        // UPI_INTENT → intentUrl is the upi://pay?... deep link
+        // PG_CHECKOUT → redirectUrl/checkoutUrl is the hosted page URL
+        $paymentUrl = $res['intentUrl']   // mobile UPI intent upi://pay?...
+          ?? $res['redirectUrl']          // PG_CHECKOUT hosted page
+          ?? $res['checkoutUrl']          // alternate key
+          ?? null;
 
         if ($paymentUrl) {
           if (!self::verifyOrderTransaction($order?->id, $transaction_id)) {
@@ -177,23 +226,29 @@ class PhonePe
             'url'            => $paymentUrl,
             'transaction_id' => $transaction_id,
             'is_redirect'    => true,
+            'flow'           => strtolower($paymentFlowType), // 'upi_intent' or 'pg_checkout'
           ];
         }
 
         $msg = $res['message'] ?? ($res['error'] ?? 'PhonePe v2 initiation failed');
         \Illuminate\Support\Facades\Log::error("PhonePe v2 Initiation Failed", [
-          'raw_response' => $response,
-          'payload'      => $v2Payload,
-          'has_token'    => true,
+          'raw_response'   => $response,
+          'payload'        => $v2Payload,
+          'has_token'      => true,
+          'is_mobile'      => $isMobile,
+          'flow'           => $paymentFlowType,
         ]);
         throw new Exception($msg, 400);
 
       } else {
-        // ─────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────
         // PhonePe v1 Legacy — SHA256 X-VERIFY header, base64 body
-        // ─────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────
         $saltKey   = env('PHONEPE_SALT_KEY', env('PHONEPE_CLIENT_SECRET'));
         $saltIndex = env('PHONEPE_SALT_INDEX', '1');
+
+        // Mobile → UPI_INTENT, Web → PAY_PAGE
+        $instrumentType = $isMobile ? 'UPI_INTENT' : 'PAY_PAGE';
 
         $intent = [
           'merchantId'            => $merchantId,
@@ -203,7 +258,7 @@ class PhonePe
           'redirectUrl'           => $redirectUrl,
           'redirectMode'          => 'REDIRECT',
           'callbackUrl'           => $callbackUrl,
-          'paymentInstrument'     => ['type' => 'PAY_PAGE'],
+          'paymentInstrument'     => ['type' => $instrumentType],
         ];
 
         if (!empty($order?->consumer?->phone)) {
@@ -238,7 +293,11 @@ class PhonePe
 
         $res = json_decode($response);
         if (isset($res->success) && ($res->success == '1' || $res->success === true)) {
-          $paymentUrl = $res?->data?->instrumentResponse?->redirectInfo?->url ?? $res?->data?->redirectUrl;
+          // UPI_INTENT returns intentUrl; PAY_PAGE returns redirect page URL
+          $paymentUrl = $res?->data?->instrumentResponse?->intentUrl    // upi://pay?...
+            ?? $res?->data?->instrumentResponse?->redirectInfo?->url    // PAY_PAGE
+            ?? $res?->data?->redirectUrl;
+
           if (!self::verifyOrderTransaction($order?->id, $transaction_id)) {
             self::storeOrderTransaction($order, $transaction_id, $request->payment_method);
           }
@@ -247,6 +306,7 @@ class PhonePe
             'url'            => $paymentUrl,
             'transaction_id' => $transaction_id,
             'is_redirect'    => true,
+            'flow'           => strtolower($instrumentType),
           ];
         }
 
@@ -273,7 +333,6 @@ class PhonePe
       $token      = self::getAccessToken();
 
       if ($token) {
-        // v2 order status
         $statusUrl = env('PHONEPE_SANDBOX_MODE')
           ? 'https://api-preprod.phonepe.com/apis/pg/checkout/v2/order/' . $transaction_id . '/status'
           : 'https://api.phonepe.com/apis/pg/checkout/v2/order/' . $transaction_id . '/status';
@@ -305,7 +364,6 @@ class PhonePe
         return $order;
 
       } else {
-        // v1 status
         $saltKey   = env('PHONEPE_SALT_KEY', env('PHONEPE_CLIENT_SECRET'));
         $saltIndex = env('PHONEPE_SALT_INDEX', '1');
         $x_header  = hash('sha256', '/pg/v1/status/' . $merchantId . "/{$transaction_id}" . $saltKey) . '###' . $saltIndex;
