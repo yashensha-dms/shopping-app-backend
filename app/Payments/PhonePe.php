@@ -194,14 +194,17 @@ class PhonePe
     try {
       $client = self::getClient();
 
-      $headers     = getallheaders();
-      $requestBody = file_get_contents('php://input');
+      $headers     = function_exists('getallheaders') ? getallheaders() : request()->headers->all();
+      $requestBody = request()->getContent();
+      if (empty($requestBody)) {
+        $requestBody = file_get_contents('php://input');
+      }
       $username    = env('PHONEPE_WEBHOOK_USERNAME', '');
       $password    = env('PHONEPE_WEBHOOK_PASSWORD', '');
 
       $callbackResponse = $client->verifyCallbackResponse(
         $headers,
-        json_decode($requestBody, true),
+        $requestBody,
         $username,
         $password
       );
