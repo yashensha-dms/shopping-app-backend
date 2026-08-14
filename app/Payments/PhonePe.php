@@ -57,6 +57,10 @@ class PhonePe
       // Amount in paisa (₹1 = 100 paisa)
       $amount = (int) round(Helpers::convertToINR($order?->total) * 100);
 
+      if ($amount < 100) {
+        throw new Exception('Order amount must be at least ₹1.00 (100 paise) to initiate PhonePe payment.', 400);
+      }
+
       // Build the pay request using the SDK builder
       $payRequest = StandardCheckoutPayRequestBuilder::builder()
         ->merchantOrderId($transaction_id)
