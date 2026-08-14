@@ -34,6 +34,7 @@ Route::post('/stripe/webhook', 'App\Http\Controllers\WebhookController@stripe')-
 Route::post('/mollie/webhook', 'App\Http\Controllers\WebhookController@mollie')->name('mollie.webhook');
 Route::post('/instamojo/webhook', 'App\Http\Controllers\WebhookController@instamojo')->name('instamojo.webhook');
 Route::post('/ccavenue/webhook', 'App\Http\Controllers\WebhookController@ccavenue')->name('ccavenue.webhook');
+Route::post('/phonepe/webhook', 'App\Http\Controllers\WebhookController@phonepe')->name('phonepe.webhook');
 
 // Authentication
 Route::post('login', [AuthController::class, 'login']);

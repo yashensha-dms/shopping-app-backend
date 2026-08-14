@@ -62,6 +62,7 @@ class PhonePe
         ->merchantOrderId($transaction_id)
         ->amount($amount)
         ->redirectUrl($redirectUrl)
+        ->message('Order #' . $order->order_number)
         ->build();
 
       // Call PhonePe API

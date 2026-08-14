@@ -57,4 +57,9 @@ class WebhookController extends Controller
     {
         return $this->repository->ccavenue($request);
     }
+
+    public function phonepe(Request $request)
+    {
+        return $this->repository->phonepe($request);
+    }
 }
