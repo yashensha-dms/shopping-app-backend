@@ -80,15 +80,9 @@ class AttachmentController extends Controller
         }
 
         if ($request->disk == 'external' || $request->disk == 'cloudinary') {
-            $attachments = $attachments->where(function($q) {
-                $q->where('disk', 'external')
-                  ->orWhere('custom_properties', 'like', '%cloudinary%')
-                  ->orWhere('file_name', 'like', '%cloudinary%')
-                  ->orWhere('name', 'like', '%cloudinary%');
-            });
+            $attachments = $attachments->where('disk', 'external');
         } elseif ($request->disk == 'local' || $request->disk == 'public') {
-            $attachments = $attachments->where('disk', '!=', 'external')
-                ->where('custom_properties', 'not like', '%cloudinary%');
+            $attachments = $attachments->where('disk', '!=', 'external');
         }
 
         if ($request->sort) {

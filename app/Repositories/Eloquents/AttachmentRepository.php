@@ -152,12 +152,7 @@ class AttachmentRepository extends BaseRepository
         try {
             $limit = (int) ($request->limit ?: 10);
 
-            $baseQuery = $this->model->where(function ($q) {
-                $q->where('disk', 'external')
-                  ->orWhere('custom_properties', 'like', '%cloudinary%')
-                  ->orWhere('file_name', 'like', '%cloudinary%')
-                  ->orWhere('name', 'like', '%cloudinary%');
-            });
+            $baseQuery = $this->model->where('disk', 'external');
 
             if ($request->ids && is_array($request->ids) && count($request->ids) > 0) {
                 $baseQuery->whereIn('id', $request->ids);
