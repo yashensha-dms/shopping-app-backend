@@ -334,26 +334,47 @@ class AttachmentRepository extends BaseRepository
     {
         $id = $attachment->id;
 
-        // Nullify foreign keys across tables using direct DB queries to prevent MySQL cascade delete
-        try {
-            \Illuminate\Support\Facades\DB::table('products')->where('product_thumbnail_id', $id)->update(['product_thumbnail_id' => null]);
-            \Illuminate\Support\Facades\DB::table('products')->where('size_chart_image_id', $id)->update(['size_chart_image_id' => null]);
-            \Illuminate\Support\Facades\DB::table('products')->where('product_meta_image_id', $id)->update(['product_meta_image_id' => null]);
-            \Illuminate\Support\Facades\DB::table('products')->where('attachment_id', $id)->update(['attachment_id' => null]);
-            \Illuminate\Support\Facades\DB::table('categories')->where('category_image_id', $id)->update(['category_image_id' => null]);
-            \Illuminate\Support\Facades\DB::table('categories')->where('category_icon_id', $id)->update(['category_icon_id' => null]);
-            \Illuminate\Support\Facades\DB::table('stores')->where('store_logo_id', $id)->update(['store_logo_id' => null]);
-            \Illuminate\Support\Facades\DB::table('stores')->where('store_cover_id', $id)->update(['store_cover_id' => null]);
-            \Illuminate\Support\Facades\DB::table('blogs')->where('blog_thumbnail_id', $id)->update(['blog_thumbnail_id' => null]);
-            \Illuminate\Support\Facades\DB::table('blogs')->where('blog_meta_image_id', $id)->update(['blog_meta_image_id' => null]);
-            \Illuminate\Support\Facades\DB::table('pages')->where('page_meta_image_id', $id)->update(['page_meta_image_id' => null]);
-            \Illuminate\Support\Facades\DB::table('reviews')->where('review_image_id', $id)->update(['review_image_id' => null]);
-            \Illuminate\Support\Facades\DB::table('refunds')->where('refund_image_id', $id)->update(['refund_image_id' => null]);
-            \Illuminate\Support\Facades\DB::table('offer_banners')->where('banner_image_id', $id)->update(['banner_image_id' => null]);
-        } catch (\Exception $e) {
-            // Ignore if a column or table doesn't exist
+        $updates = [
+            ['table' => 'products', 'column' => 'product_thumbnail_id'],
+            ['table' => 'products', 'column' => 'size_chart_image_id'],
+            ['table' => 'products', 'column' => 'product_meta_image_id'],
+            ['table' => 'product_images', 'column' => 'attachment_id', 'action' => 'delete'],
+            ['table' => 'variations', 'column' => 'variation_image_id'],
+            ['table' => 'categories', 'column' => 'category_image_id'],
+            ['table' => 'categories', 'column' => 'category_icon_id'],
+            ['table' => 'stores', 'column' => 'store_logo_id'],
+            ['table' => 'stores', 'column' => 'store_cover_id'],
+            ['table' => 'blogs', 'column' => 'blog_thumbnail_id'],
+            ['table' => 'blogs', 'column' => 'blog_meta_image_id'],
+            ['table' => 'pages', 'column' => 'page_meta_image_id'],
+            ['table' => 'reviews', 'column' => 'review_image_id'],
+            ['table' => 'refunds', 'column' => 'refund_image_id'],
+            ['table' => 'offer_banners', 'column' => 'banner_image_id'],
+        ];
+
+        foreach ($updates as $item) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable($item['table']) && 
+                    \Illuminate\Support\Facades\Schema::hasColumn($item['table'], $item['column'])) {
+                    if (isset($item['action']) && $item['action'] === 'delete') {
+                        \Illuminate\Support\Facades\DB::table($item['table'])->where($item['column'], $id)->delete();
+                    } else {
+                        \Illuminate\Support\Facades\DB::table($item['table'])->where($item['column'], $id)->update([$item['column'] => null]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore gracefully
+            }
         }
 
-        $attachment->forceDelete();
+        try {
+            $attachment->forceDelete();
+        } catch (\Throwable $e) {
+            try {
+                $attachment->delete();
+            } catch (\Throwable $e2) {
+                // Ignore
+            }
+        }
     }
 }
