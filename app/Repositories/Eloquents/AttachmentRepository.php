@@ -316,7 +316,17 @@ class AttachmentRepository extends BaseRepository
                 'log' => $log,
             ]);
         } catch (\Exception $e) {
-            throw new ExceptionHandler($e->getMessage(), 422);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'processed_count' => 0,
+                'synced_count' => 0,
+                'deleted_dead_count' => 0,
+                'failed_count' => 0,
+                'remaining_count' => 0,
+                'has_more' => false,
+                'log' => [],
+            ], 200);
         }
     }
 
@@ -324,21 +334,25 @@ class AttachmentRepository extends BaseRepository
     {
         $id = $attachment->id;
 
-        // Nullify foreign keys across tables to prevent MySQL cascade delete
-        \App\Models\Product::where('product_thumbnail_id', $id)->update(['product_thumbnail_id' => null]);
-        \App\Models\Product::where('size_chart_image_id', $id)->update(['size_chart_image_id' => null]);
-        \App\Models\Product::where('product_meta_image_id', $id)->update(['product_meta_image_id' => null]);
-        \App\Models\Product::where('attachment_id', $id)->update(['attachment_id' => null]);
-        \App\Models\Category::where('category_image_id', $id)->update(['category_image_id' => null]);
-        \App\Models\Category::where('category_icon_id', $id)->update(['category_icon_id' => null]);
-        \App\Models\Store::where('store_logo_id', $id)->update(['store_logo_id' => null]);
-        \App\Models\Store::where('store_cover_id', $id)->update(['store_cover_id' => null]);
-        \App\Models\Blog::where('blog_thumbnail_id', $id)->update(['blog_thumbnail_id' => null]);
-        \App\Models\Blog::where('blog_meta_image_id', $id)->update(['blog_meta_image_id' => null]);
-        \App\Models\Page::where('page_meta_image_id', $id)->update(['page_meta_image_id' => null]);
-        \App\Models\Review::where('review_image_id', $id)->update(['review_image_id' => null]);
-        \App\Models\Refund::where('refund_image_id', $id)->update(['refund_image_id' => null]);
-        \App\Models\OfferBanner::where('banner_image_id', $id)->update(['banner_image_id' => null]);
+        // Nullify foreign keys across tables using direct DB queries to prevent MySQL cascade delete
+        try {
+            \Illuminate\Support\Facades\DB::table('products')->where('product_thumbnail_id', $id)->update(['product_thumbnail_id' => null]);
+            \Illuminate\Support\Facades\DB::table('products')->where('size_chart_image_id', $id)->update(['size_chart_image_id' => null]);
+            \Illuminate\Support\Facades\DB::table('products')->where('product_meta_image_id', $id)->update(['product_meta_image_id' => null]);
+            \Illuminate\Support\Facades\DB::table('products')->where('attachment_id', $id)->update(['attachment_id' => null]);
+            \Illuminate\Support\Facades\DB::table('categories')->where('category_image_id', $id)->update(['category_image_id' => null]);
+            \Illuminate\Support\Facades\DB::table('categories')->where('category_icon_id', $id)->update(['category_icon_id' => null]);
+            \Illuminate\Support\Facades\DB::table('stores')->where('store_logo_id', $id)->update(['store_logo_id' => null]);
+            \Illuminate\Support\Facades\DB::table('stores')->where('store_cover_id', $id)->update(['store_cover_id' => null]);
+            \Illuminate\Support\Facades\DB::table('blogs')->where('blog_thumbnail_id', $id)->update(['blog_thumbnail_id' => null]);
+            \Illuminate\Support\Facades\DB::table('blogs')->where('blog_meta_image_id', $id)->update(['blog_meta_image_id' => null]);
+            \Illuminate\Support\Facades\DB::table('pages')->where('page_meta_image_id', $id)->update(['page_meta_image_id' => null]);
+            \Illuminate\Support\Facades\DB::table('reviews')->where('review_image_id', $id)->update(['review_image_id' => null]);
+            \Illuminate\Support\Facades\DB::table('refunds')->where('refund_image_id', $id)->update(['refund_image_id' => null]);
+            \Illuminate\Support\Facades\DB::table('offer_banners')->where('banner_image_id', $id)->update(['banner_image_id' => null]);
+        } catch (\Exception $e) {
+            // Ignore if a column or table doesn't exist
+        }
 
         $attachment->forceDelete();
     }

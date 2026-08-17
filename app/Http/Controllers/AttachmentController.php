@@ -32,6 +32,13 @@ class AttachmentController extends Controller
     public function index(Request $request)
     {
         $attachments = $this->filter($this->repository, $request);
+
+        if ($request->disk == 'external' || $request->disk == 'cloudinary' || $request->paginate == -1 || $request->all) {
+            $count = (clone $attachments)->count();
+            $paginate = $count > 0 ? $count : 500;
+            return $attachments->latest('created_at')->paginate($paginate);
+        }
+
         return $attachments->latest('created_at')->paginate($request->paginate ?? $this->repository->count());
     }
 
