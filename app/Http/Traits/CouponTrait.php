@@ -32,9 +32,16 @@ trait CouponTrait
 
   public function isCouponUsable($coupon, $consumer)
   {
+    if ($coupon->is_first_order && $consumer) {
+      $hasPreviousOrders = \App\Models\Order::where('consumer_id', $consumer)->exists();
+      if ($hasPreviousOrders) {
+        throw new Exception("The coupon code {$coupon->code} is only valid for first-time orders.", 422);
+      }
+    }
+
     if (!$coupon->is_unlimited) {
       if ($coupon->usage_per_customer) {
-        $countUsedPerConsumer = Helpers::getCountUsedPerConsumer($coupon->id, $consumer);
+        $countUsedPerConsumer = Helpers::getCountUsedPerConsumer($consumer, $coupon->id);
         if ($coupon->usage_per_customer <= $countUsedPerConsumer) {
           throw new Exception("The coupon code {$coupon->code} has reached its maximum usage of {$coupon->usage_per_customer} times per consumer.", 422);
         }

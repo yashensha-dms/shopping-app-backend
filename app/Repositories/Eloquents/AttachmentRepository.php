@@ -10,6 +10,8 @@ use Prettus\Repository\Eloquent\BaseRepository;
 use Prettus\Repository\Criteria\RequestCriteria;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class AttachmentRepository extends BaseRepository
 {
@@ -140,5 +142,204 @@ class AttachmentRepository extends BaseRepository
 
             throw new ExceptionHandler($e->getMessage(), $e->getCode());
         }
+    }
+
+    public function syncCloudinary($request)
+    {
+        try {
+            $limit = (int) ($request->limit ?: 30);
+            $deleteDead = $request->has('delete_dead') ? (bool) $request->delete_dead : true;
+
+            $baseQuery = $this->model->where(function ($q) {
+                $q->where('disk', 'external')
+                  ->orWhere('custom_properties', 'like', '%cloudinary%')
+                  ->orWhere('file_name', 'like', '%cloudinary%')
+                  ->orWhere('name', 'like', '%cloudinary%');
+            });
+
+            if ($request->ids && is_array($request->ids) && count($request->ids) > 0) {
+                $baseQuery->whereIn('id', $request->ids);
+            }
+
+            $totalRemaining = (clone $baseQuery)->count();
+            $attachments = (clone $baseQuery)->take($limit)->get();
+
+            if ($attachments->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'No Cloudinary media found to sync.',
+                    'processed_count' => 0,
+                    'synced_count' => 0,
+                    'deleted_dead_count' => 0,
+                    'failed_count' => 0,
+                    'remaining_count' => 0,
+                    'has_more' => false,
+                    'log' => [],
+                ]);
+            }
+
+            $syncedCount = 0;
+            $deletedDeadCount = 0;
+            $failedCount = 0;
+            $log = [];
+
+            foreach ($attachments as $attachment) {
+                $externalUrl = $attachment->custom_properties['external_url'] 
+                    ?? (filter_var($attachment->file_name, FILTER_VALIDATE_URL) ? $attachment->file_name : null)
+                    ?? $attachment->original_url 
+                    ?? null;
+
+                if (!$externalUrl || !filter_var($externalUrl, FILTER_VALIDATE_URL)) {
+                    if ($deleteDead) {
+                        $this->safeDetachAndForceDelete($attachment);
+                        $deletedDeadCount++;
+                        $log[] = [
+                            'id' => $attachment->id,
+                            'name' => $attachment->name ?: $attachment->file_name,
+                            'status' => 'deleted_dead',
+                            'reason' => 'Invalid or missing URL',
+                        ];
+                    } else {
+                        $failedCount++;
+                        $log[] = [
+                            'id' => $attachment->id,
+                            'name' => $attachment->name ?: $attachment->file_name,
+                            'status' => 'failed',
+                            'reason' => 'Invalid URL',
+                        ];
+                    }
+                    continue;
+                }
+
+                try {
+                    $response = Http::timeout(15)->withHeaders([
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    ])->get($externalUrl);
+
+                    if ($response->successful()) {
+                        $imageContent = $response->body();
+                        $contentType = $response->header('Content-Type') ?: 'image/jpeg';
+
+                        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                        $mimeType = $finfo->buffer($imageContent) ?: $contentType;
+
+                        $extension = 'jpg';
+                        if (str_contains($mimeType, 'png')) $extension = 'png';
+                        elseif (str_contains($mimeType, 'webp')) $extension = 'webp';
+                        elseif (str_contains($mimeType, 'gif')) $extension = 'gif';
+                        elseif (str_contains($mimeType, 'svg')) $extension = 'svg';
+
+                        $baseName = pathinfo($attachment->file_name, PATHINFO_FILENAME);
+                        $cleanName = Str::slug($attachment->name ?: $baseName) ?: 'media_' . $attachment->id;
+                        $finalFileName = $cleanName . '.' . $extension;
+                        $fileSize = strlen($imageContent);
+
+                        // Save in standard Spatie path: storage/app/public/{id}/{fileName}
+                        $storageRelativePath = "{$attachment->id}/{$finalFileName}";
+                        Storage::disk('public')->put($storageRelativePath, $imageContent);
+
+                        $customProps = $attachment->custom_properties ?: [];
+                        $customProps['synced_from'] = 'cloudinary';
+                        $customProps['synced_at'] = now()->toIso8601String();
+                        unset($customProps['external_url']);
+
+                        $attachment->update([
+                            'disk' => 'public',
+                            'conversions_disk' => 'public',
+                            'file_name' => $finalFileName,
+                            'mime_type' => $mimeType,
+                            'size' => $fileSize,
+                            'custom_properties' => $customProps,
+                        ]);
+
+                        $syncedCount++;
+                        $log[] = [
+                            'id' => $attachment->id,
+                            'name' => $finalFileName,
+                            'status' => 'synced',
+                            'size' => $fileSize,
+                        ];
+                    } else {
+                        // Dead link (404, 403, 500)
+                        if ($deleteDead) {
+                            $this->safeDetachAndForceDelete($attachment);
+                            $deletedDeadCount++;
+                            $log[] = [
+                                'id' => $attachment->id,
+                                'name' => $attachment->name ?: $attachment->file_name,
+                                'status' => 'deleted_dead',
+                                'reason' => 'HTTP ' . $response->status(),
+                            ];
+                        } else {
+                            $failedCount++;
+                            $log[] = [
+                                'id' => $attachment->id,
+                                'name' => $attachment->name ?: $attachment->file_name,
+                                'status' => 'failed',
+                                'reason' => 'HTTP status ' . $response->status(),
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    if ($deleteDead) {
+                        $this->safeDetachAndForceDelete($attachment);
+                        $deletedDeadCount++;
+                        $log[] = [
+                            'id' => $attachment->id,
+                            'name' => $attachment->name ?: $attachment->file_name,
+                            'status' => 'deleted_dead',
+                            'reason' => 'Unreachable: ' . $e->getMessage(),
+                        ];
+                    } else {
+                        $failedCount++;
+                        $log[] = [
+                            'id' => $attachment->id,
+                            'name' => $attachment->name ?: $attachment->file_name,
+                            'status' => 'failed',
+                            'reason' => $e->getMessage(),
+                        ];
+                    }
+                }
+            }
+
+            $remainingAfterBatch = max(0, $totalRemaining - ($syncedCount + $deletedDeadCount));
+
+            return response()->json([
+                'success' => true,
+                'message' => "Batch processed: {$syncedCount} synced in-place, {$deletedDeadCount} dead deleted.",
+                'processed_count' => count($attachments),
+                'synced_count' => $syncedCount,
+                'deleted_dead_count' => $deletedDeadCount,
+                'failed_count' => $failedCount,
+                'remaining_count' => $remainingAfterBatch,
+                'has_more' => $remainingAfterBatch > 0,
+                'log' => $log,
+            ]);
+        } catch (\Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), 422);
+        }
+    }
+
+    protected function safeDetachAndForceDelete($attachment)
+    {
+        $id = $attachment->id;
+
+        // Nullify foreign keys across tables to prevent MySQL cascade delete
+        \App\Models\Product::where('product_thumbnail_id', $id)->update(['product_thumbnail_id' => null]);
+        \App\Models\Product::where('size_chart_image_id', $id)->update(['size_chart_image_id' => null]);
+        \App\Models\Product::where('product_meta_image_id', $id)->update(['product_meta_image_id' => null]);
+        \App\Models\Product::where('attachment_id', $id)->update(['attachment_id' => null]);
+        \App\Models\Category::where('category_image_id', $id)->update(['category_image_id' => null]);
+        \App\Models\Category::where('category_icon_id', $id)->update(['category_icon_id' => null]);
+        \App\Models\Store::where('store_logo_id', $id)->update(['store_logo_id' => null]);
+        \App\Models\Store::where('store_cover_id', $id)->update(['store_cover_id' => null]);
+        \App\Models\Blog::where('blog_thumbnail_id', $id)->update(['blog_thumbnail_id' => null]);
+        \App\Models\Blog::where('blog_meta_image_id', $id)->update(['blog_meta_image_id' => null]);
+        \App\Models\Page::where('page_meta_image_id', $id)->update(['page_meta_image_id' => null]);
+        \App\Models\Review::where('review_image_id', $id)->update(['review_image_id' => null]);
+        \App\Models\Refund::where('refund_image_id', $id)->update(['refund_image_id' => null]);
+        \App\Models\OfferBanner::where('banner_image_id', $id)->update(['banner_image_id' => null]);
+
+        $attachment->forceDelete();
     }
 }

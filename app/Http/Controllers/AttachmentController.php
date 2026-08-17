@@ -17,10 +17,15 @@ class AttachmentController extends Controller
     public function __construct(AttachmentRepository $repository)
     {
         $this->authorizeResource(Attachment::class, 'attachment', [
-            'except' => [ 'index', 'show' ],
+            'except' => [ 'index', 'show', 'syncCloudinary' ],
         ]);
 
         $this->repository = $repository;
+    }
+
+    public function syncCloudinary(Request $request)
+    {
+        return $this->repository->syncCloudinary($request);
     }
 
     
@@ -65,6 +70,18 @@ class AttachmentController extends Controller
         $roleName = Helpers::getCurrentRoleName();
         if ($roleName == RoleEnum::VENDOR || $roleName == RoleEnum::CONSUMER) {
             $attachments = $this->repository->where('created_by_id', Helpers::getCurrentUserId());
+        }
+
+        if ($request->disk == 'external' || $request->disk == 'cloudinary') {
+            $attachments = $attachments->where(function($q) {
+                $q->where('disk', 'external')
+                  ->orWhere('custom_properties', 'like', '%cloudinary%')
+                  ->orWhere('file_name', 'like', '%cloudinary%')
+                  ->orWhere('name', 'like', '%cloudinary%');
+            });
+        } elseif ($request->disk == 'local' || $request->disk == 'public') {
+            $attachments = $attachments->where('disk', '!=', 'external')
+                ->where('custom_properties', 'not like', '%cloudinary%');
         }
 
         if ($request->sort) {

@@ -318,8 +318,9 @@ Route::group(['middleware' => ['localization','auth:sanctum']], function () {
   Route::put('orderStatus/{id}/{status}', 'App\Http\Controllers\OrderStatusController@status')->middleware('can:order_status.edit');
 
   // Attachments
-  Route::apiResource('attachment', 'App\Http\Controllers\AttachmentController');
   Route::post('attachment/deleteAll', 'App\Http\Controllers\AttachmentController@deleteAll')->middleware('can:attachment.destroy');
+  Route::post('attachment/sync-cloudinary', 'App\Http\Controllers\AttachmentController@syncCloudinary')->middleware('can:attachment.create');
+  Route::apiResource('attachment', 'App\Http\Controllers\AttachmentController');
 
   // Blogs
   Route::apiResource('blog', 'App\Http\Controllers\BlogController',[
