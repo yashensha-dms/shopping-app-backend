@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Client\Pool;
 
 class AttachmentRepository extends BaseRepository
@@ -268,18 +269,23 @@ class AttachmentRepository extends BaseRepository
                         $storageRelativePath = "{$attachment->id}/{$finalFileName}";
                         Storage::disk('public')->put($storageRelativePath, $imageContent);
 
-                        $customProps = $attachment->custom_properties ?: [];
+                        $customProps = is_array($attachment->custom_properties) 
+                            ? $attachment->custom_properties 
+                            : (json_decode($attachment->custom_properties ?? '{}', true) ?: []);
                         $customProps['synced_from'] = 'cloudinary';
                         $customProps['synced_at'] = now()->toIso8601String();
                         unset($customProps['external_url']);
 
-                        $attachment->update([
+                        DB::table('attachments')->where('id', $attachment->id)->update([
                             'disk' => 'public',
                             'conversions_disk' => 'public',
                             'file_name' => $finalFileName,
                             'mime_type' => $mimeType,
                             'size' => $fileSize,
-                            'custom_properties' => $customProps,
+                            'custom_properties' => json_encode($customProps),
+                            'model_type' => 'App\\Models\\Attachment',
+                            'model_id' => $attachment->id,
+                            'updated_at' => now(),
                         ]);
 
                         $syncedCount++;
