@@ -148,10 +148,9 @@ class AttachmentRepository extends BaseRepository
 
     public function syncCloudinary($request)
     {
-        @set_time_limit(120);
+        @set_time_limit(180);
         try {
-            $limit = (int) ($request->limit ?: 15);
-            $deleteDead = $request->has('delete_dead') ? (bool) $request->delete_dead : true;
+            $limit = (int) ($request->limit ?: 10);
 
             $baseQuery = $this->model->where(function ($q) {
                 $q->where('disk', 'external')
@@ -182,12 +181,9 @@ class AttachmentRepository extends BaseRepository
             }
 
             $syncedCount = 0;
-            $deletedDeadCount = 0;
             $failedCount = 0;
             $log = [];
 
-            // 1. Prepare valid URLs and identify immediately invalid entries
-            $urlMap = [];
             foreach ($attachments as $attachment) {
                 $externalUrl = $attachment->custom_properties['external_url'] 
                     ?? (filter_var($attachment->file_name, FILTER_VALIDATE_URL) ? $attachment->file_name : null)
@@ -195,59 +191,22 @@ class AttachmentRepository extends BaseRepository
                     ?? null;
 
                 if (!$externalUrl || !filter_var($externalUrl, FILTER_VALIDATE_URL)) {
-                    if ($deleteDead) {
-                        $this->safeDetachAndForceDelete($attachment);
-                        $deletedDeadCount++;
-                        $log[] = [
-                            'id' => $attachment->id,
-                            'name' => $attachment->name ?: $attachment->file_name,
-                            'status' => 'deleted_dead',
-                            'reason' => 'Invalid or missing URL',
-                        ];
-                    } else {
-                        $failedCount++;
-                        $log[] = [
-                            'id' => $attachment->id,
-                            'name' => $attachment->name ?: $attachment->file_name,
-                            'status' => 'failed',
-                            'reason' => 'Invalid URL',
-                        ];
-                    }
-                } else {
-                    $urlMap[$attachment->id] = [
-                        'attachment' => $attachment,
-                        'url' => $externalUrl,
+                    $failedCount++;
+                    $log[] = [
+                        'id' => $attachment->id,
+                        'name' => $attachment->name ?: $attachment->file_name,
+                        'status' => 'failed',
+                        'reason' => 'Invalid or missing URL',
                     ];
+                    continue;
                 }
-            }
 
-            // 2. Perform concurrent parallel HTTP requests using Http::pool
-            $poolResponses = [];
-            if (!empty($urlMap)) {
-                $poolResponses = Http::pool(function (Pool $pool) use ($urlMap) {
-                    $requests = [];
-                    foreach ($urlMap as $id => $data) {
-                        $requests[] = $pool->as("att_{$id}")
-                            ->timeout(6)
-                            ->connectTimeout(3)
-                            ->withHeaders([
-                                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                            ])
-                            ->get($data['url']);
-                    }
-                    return $requests;
-                });
-            }
+                try {
+                    $response = Http::timeout(25)->connectTimeout(8)->withHeaders([
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    ])->get($externalUrl);
 
-            // 3. Process concurrent responses
-            foreach ($urlMap as $id => $data) {
-                $attachment = $data['attachment'];
-                $response = $poolResponses["att_{$id}"] ?? null;
-
-                $isSuccessful = ($response instanceof \Illuminate\Http\Client\Response) && $response->successful();
-
-                if ($isSuccessful) {
-                    try {
+                    if ($response->successful()) {
                         $imageContent = $response->body();
                         $contentType = $response->header('Content-Type') ?: 'image/jpeg';
 
@@ -295,49 +254,34 @@ class AttachmentRepository extends BaseRepository
                             'status' => 'synced',
                             'size' => $fileSize,
                         ];
-                    } catch (\Throwable $e) {
-                        $failedCount++;
-                        $log[] = [
-                            'id' => $attachment->id,
-                            'name' => $attachment->name ?: $attachment->file_name,
-                            'status' => 'failed',
-                            'reason' => 'Save failed: ' . $e->getMessage(),
-                        ];
-                    }
-                } else {
-                    // Dead or unreachable (404, 403, 500, timeout)
-                    if ($deleteDead) {
-                        $this->safeDetachAndForceDelete($attachment);
-                        $deletedDeadCount++;
-                        $statusText = ($response instanceof \Illuminate\Http\Client\Response) 
-                            ? 'Dead (' . $response->status() . ')' 
-                            : 'Unreachable / Timeout';
-                        $log[] = [
-                            'id' => $attachment->id,
-                            'name' => $attachment->name ?: $attachment->file_name,
-                            'status' => 'deleted_dead',
-                            'reason' => $statusText,
-                        ];
                     } else {
                         $failedCount++;
                         $log[] = [
                             'id' => $attachment->id,
                             'name' => $attachment->name ?: $attachment->file_name,
                             'status' => 'failed',
-                            'reason' => 'HTTP fetch failed',
+                            'reason' => 'HTTP status ' . $response->status(),
                         ];
                     }
+                } catch (\Throwable $e) {
+                    $failedCount++;
+                    $log[] = [
+                        'id' => $attachment->id,
+                        'name' => $attachment->name ?: $attachment->file_name,
+                        'status' => 'failed',
+                        'reason' => 'Download timeout: ' . $e->getMessage(),
+                    ];
                 }
             }
 
-            $remainingAfterBatch = max(0, $totalRemaining - ($syncedCount + $deletedDeadCount));
+            $remainingAfterBatch = max(0, $totalRemaining - $syncedCount);
 
             return response()->json([
                 'success' => true,
-                'message' => "Batch processed: {$syncedCount} synced in-place, {$deletedDeadCount} dead deleted.",
+                'message' => "Batch processed: {$syncedCount} synced in-place.",
                 'processed_count' => count($attachments),
                 'synced_count' => $syncedCount,
-                'deleted_dead_count' => $deletedDeadCount,
+                'deleted_dead_count' => 0,
                 'failed_count' => $failedCount,
                 'remaining_count' => $remainingAfterBatch,
                 'has_more' => $remainingAfterBatch > 0,
