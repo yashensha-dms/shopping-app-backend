@@ -33,13 +33,13 @@ class AttachmentController extends Controller
     {
         $attachments = $this->filter($this->repository, $request);
 
-        if ($request->disk == 'external' || $request->disk == 'cloudinary' || $request->paginate == -1 || $request->all) {
+        if ($request->has('all') && $request->all) {
             $count = (clone $attachments)->count();
-            $paginate = $count > 0 ? $count : 500;
-            return $attachments->latest('created_at')->paginate($paginate);
+            return $attachments->latest('created_at')->paginate($count ?: 100);
         }
 
-        return $attachments->latest('created_at')->paginate($request->paginate ?? $this->repository->count());
+        $paginate = $request->paginate ?: 30;
+        return $attachments->latest('created_at')->paginate($paginate);
     }
 
     
